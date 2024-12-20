@@ -9,11 +9,16 @@ readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 
 [project.scripts]
-saluki = "saluki:main"
+saluki = "saluki.main:main"
 
+[project.urls]
+"Homepage" = "https://github.com/rerpha/saluki"
+"Bug Reports" = "https://github.com/rerpha/saluki/issues"
+"Source" = "https://github.com/rerpha/saluki"
 
 [project.optional-dependencies]
 dev = [
     "pyright",
     "ruff"
 ]
+
