@@ -2,6 +2,10 @@ import argparse
 import sys
 from confluent_kafka import Consumer
 from streaming_data_types import DESERIALISERS
+from streaming_data_types.exceptions import (
+    WrongSchemaException,
+    StreamingDataTypesException,
+)
 
 
 def main():
@@ -70,26 +74,40 @@ def main():
         )
 
         c.subscribe([args.topic])
-
-        print(f"listening to {args.broker}/{args.topic}")
-        while True:
-            msg = c.poll(1.0)
-            if msg is None:
-                continue
-            if msg.error():
-                print("Consumer error: {}".format(msg.error()))
-                continue
-            try_to_deserialise_message(msg.value())
-
+        try:
+            print(f"listening to {args.broker}/{args.topic}")
+            while True:
+                msg = c.poll(1.0)
+                if msg is None:
+                    continue
+                if msg.error():
+                    print("Consumer error: {}".format(msg.error()))
+                    continue
+                deserialised = try_to_deserialise_message(msg.value())
+                print(f"{msg.offset()}: {deserialised}")
+        except KeyboardInterrupt:
+            print("finished listening")
+        finally:
+            print(f"closing consumer {c}")
+            c.close()
     elif args.command == "c":
-        raise NotImplementedError
+        raise NotImplementedError  # TODO
     elif args.command == "p":
-        raise NotImplementedError
+        raise NotImplementedError  # TODO
 
 
 def try_to_deserialise_message(payload: bytes) -> str:
-    file_id = payload[0:4]
-    deserialiser = DESERIALISERS[file_id.decode()]
+    print("got some data")
+    file_id = payload[4:8]
+    deserialiser = lambda x: x  # Fall back to this if we need to so data isn't lost
+    try:
+        deserialiser = DESERIALISERS[file_id.decode()]
+    except WrongSchemaException as e:
+        pass  # TODO
+    except StreamingDataTypesException:
+        pass  # TODO
+    except KeyError:
+        pass
     return deserialiser(payload)
 
 
