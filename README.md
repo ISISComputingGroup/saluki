@@ -1,6 +1,8 @@
 # saluki
-serialise/deserialise flatbuffers blobs from kafka
 
+![ibex_bluesky_core](https://github.com/rerpha/saluki/blob/main/resources/logo.jpg?raw=True)
+
+serialise/deserialise flatbuffers blobs from kafka
 
 ## install 
 
