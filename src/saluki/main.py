@@ -1,11 +1,18 @@
 import argparse
 import sys
-from confluent_kafka import Consumer
-from streaming_data_types import DESERIALISERS
-from streaming_data_types.exceptions import (
-    WrongSchemaException,
-    StreamingDataTypesException,
-)
+
+
+import logging
+from logging import FileHandler
+
+from saluki.listen import listen
+
+logger = logging.getLogger("saluki")
+logging.basicConfig(level=logging.INFO)
+
+_LISTEN = "listen"
+_PRODUCE = "produce"
+_CONSUME = "consume"
 
 
 def main():
@@ -24,7 +31,11 @@ def main():
         default="",
     )
     parent_parser.add_argument(
-        "-f", help="filename to output all data to", required=False
+        "-f",
+        help="filename to output all data to",
+        required=False,
+        default=None,
+        type=argparse.FileType("a"),
     )
 
     sub_parsers = parser.add_subparsers(
@@ -41,7 +52,7 @@ def main():
     )
 
     consumer_mode_parser = sub_parsers.add_parser(
-        "c", help="consumer mode", parents=[parent_parser, consumer_parser]
+        _CONSUME, help="consumer mode", parents=[parent_parser, consumer_parser]
     )
     consumer_mode_parser.add_argument(
         "-m", help="How many messages to go back", type=int
@@ -52,63 +63,28 @@ def main():
     )
 
     _ = sub_parsers.add_parser(
-        "l",
+        _LISTEN,
         help="listen mode - listen until KeyboardInterrupt",
         parents=[parent_parser, consumer_parser],
     )
 
     # Producer mode - add this later
-    _ = sub_parsers.add_parser("p", help="producer mode", parents=[parent_parser])
+    _ = sub_parsers.add_parser(_PRODUCE, help="producer mode", parents=[parent_parser])
 
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
-
     args = parser.parse_args()
-    if args.command == "l":
-        c = Consumer(
-            {
-                "bootstrap.servers": args.broker,
-                "group.id": "saluki",
-            }
-        )
 
-        c.subscribe([args.topic])
-        try:
-            print(f"listening to {args.broker}/{args.topic}")
-            while True:
-                msg = c.poll(1.0)
-                if msg is None:
-                    continue
-                if msg.error():
-                    print("Consumer error: {}".format(msg.error()))
-                    continue
-                deserialised = try_to_deserialise_message(msg.value())
-                print(f"{msg.offset()}: {deserialised}")
-        except KeyboardInterrupt:
-            print("finished listening")
-        finally:
-            print(f"closing consumer {c}")
-            c.close()
-    elif args.command == "c":
-        raise NotImplementedError  # TODO
-    elif args.command == "p":
-        raise NotImplementedError  # TODO
+    if args.f:
+        logger.addHandler(FileHandler(args.f.name))
 
-
-def try_to_deserialise_message(payload: bytes) -> str:
-    print("got some data")
-    file_id = payload[4:8]
-    deserialiser = lambda x: x  # noqa: E731
-    try:
-        deserialiser = DESERIALISERS[file_id.decode()]
-    except WrongSchemaException:
-        pass  # TODO
-    except StreamingDataTypesException:
-        pass  # TODO
-    except KeyError:
-        pass
-    return deserialiser(payload)
+    if args.command == _LISTEN:
+        listen(args.broker, args.topic)
+    elif args.command == _CONSUME:
+        raise NotImplementedError
+    elif args.command == _PRODUCE:
+        raise NotImplementedError
 
 
 if __name__ == "__main__":
