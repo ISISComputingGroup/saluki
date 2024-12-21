@@ -1,5 +1,3 @@
-# saluki
-
 ![saluki](https://github.com/rerpha/saluki/blob/main/resources/logo.png?raw=True)
 
 serialise/deserialise flatbuffers blobs from kafka
