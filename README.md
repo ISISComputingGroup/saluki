@@ -1,11 +1,11 @@
 ![saluki](https://github.com/rerpha/saluki/blob/main/resources/logo.png?raw=True)
 
-serialise/deserialise flatbuffers blobs from kafka
+Serialise/deserialise flatbuffers blobs from kafka
 
 ## install 
 
-- TODO pip install - need to set up pypi
+`pip install saluki`
 
 ## developer setup 
-`pip install .`
+`pip install .[dev]`
 

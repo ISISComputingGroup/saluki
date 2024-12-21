@@ -99,10 +99,10 @@ def main():
 def try_to_deserialise_message(payload: bytes) -> str:
     print("got some data")
     file_id = payload[4:8]
-    deserialiser = lambda x: x  # Fall back to this if we need to so data isn't lost
+    deserialiser = lambda x: x  # noqa: E731
     try:
         deserialiser = DESERIALISERS[file_id.decode()]
-    except WrongSchemaException as e:
+    except WrongSchemaException:
         pass  # TODO
     except StreamingDataTypesException:
         pass  # TODO
