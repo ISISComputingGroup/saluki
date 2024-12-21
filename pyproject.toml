@@ -19,6 +19,7 @@ saluki = "saluki.main:main"
 [project.optional-dependencies]
 dev = [
     "pyright",
-    "ruff"
+    "ruff",
+    "pytest",
 ]
 
