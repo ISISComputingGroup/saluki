@@ -27,3 +27,4 @@ dev = [
     "pytest",
 ]
 
+[tool.setuptools_scm]
