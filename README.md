@@ -1,6 +1,6 @@
 # saluki
 
-![ibex_bluesky_core](https://github.com/rerpha/saluki/blob/main/resources/logo.jpg?raw=True)
+![saluki](https://github.com/rerpha/saluki/blob/main/resources/logo.png?raw=True)
 
 serialise/deserialise flatbuffers blobs from kafka
 
