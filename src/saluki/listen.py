@@ -37,7 +37,7 @@ def listen(broker: str, topic: str, partition: int | None = None) -> None:
             deserialised = try_to_deserialise_message(msg.value())
             logger.info(f"{msg.offset()}: {deserialised}")
     except KeyboardInterrupt:
-        logging.debug("finished listening")
+        logger.debug("finished listening")
     finally:
-        logging.debug(f"closing consumer {c}")
+        logger.debug(f"closing consumer {c}")
         c.close()

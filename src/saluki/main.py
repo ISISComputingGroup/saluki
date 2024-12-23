@@ -5,6 +5,8 @@ import sys
 import logging
 from logging import FileHandler
 
+
+from saluki.consume import consume
 from saluki.listen import listen
 
 logger = logging.getLogger("saluki")
@@ -24,9 +26,7 @@ def main():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("-b", "--broker", required=True, type=str)
     parent_parser.add_argument("-t", "--topic", required=True, type=str)
-    parent_parser.add_argument(
-        "-p", "--partition", required=False, type=int, default=None
-    )
+
     parent_parser.add_argument(
         "-X",
         "--kafka-config",
@@ -60,23 +60,46 @@ def main():
         _CONSUME, help="consumer mode", parents=[parent_parser, consumer_parser]
     )
     consumer_mode_parser.add_argument(
-        "-m", "--messages", help="How many messages to go back", type=int, required=True
+        "-m",
+        "--messages",
+        help="How many messages to go back",
+        type=int,
+        required=False,
+        default=1,
     )
     consumer_mode_parser.add_argument(
-        "-o", "--offset", help="offset to consume from", type=int, required=True
+        "-o", "--offset", help="offset to consume from", type=int, required=False
     )
     consumer_mode_parser.add_argument(
         "-s", "--schema", required=False, default="auto", type=str
     )
+    consumer_mode_parser.add_argument(
+        "-g", "--go-forwards", required=False, action="store_true"
+    )
+    consumer_mode_parser.add_argument(
+        "-p", "--partition", required=False, type=int, default=0
+    )
 
-    _ = sub_parsers.add_parser(
+    listen_parser = sub_parsers.add_parser(
         _LISTEN,
         help="listen mode - listen until KeyboardInterrupt",
         parents=[parent_parser, consumer_parser],
     )
+    listen_parser.add_argument(
+        "-p", "--partition", required=False, type=int, default=None
+    )
 
     # Producer mode - add this later
-    _ = sub_parsers.add_parser(_PRODUCE, help="producer mode", parents=[parent_parser])
+    producer_parser = sub_parsers.add_parser(
+        _PRODUCE, help="producer mode", parents=[parent_parser]
+    )
+    producer_parser.add_argument(
+        "-f",
+        "--filename",
+        help="JSON file to produce",
+        required=True,
+        type=argparse.FileType("r"),
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -89,7 +112,14 @@ def main():
     if args.command == _LISTEN:
         listen(args.broker, args.topic, args.partition)
     elif args.command == _CONSUME:
-        raise NotImplementedError
+        consume(
+            args.broker,
+            args.topic,
+            args.partition,
+            args.messages,
+            args.offset,
+            args.go_forwards,
+        )
     elif args.command == _PRODUCE:
         raise NotImplementedError
 
