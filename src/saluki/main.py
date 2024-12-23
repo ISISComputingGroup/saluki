@@ -25,13 +25,18 @@ def main():
     parent_parser.add_argument("-b", "--broker", required=True, type=str)
     parent_parser.add_argument("-t", "--topic", required=True, type=str)
     parent_parser.add_argument(
+        "-p", "--partition", required=False, type=int, default=None
+    )
+    parent_parser.add_argument(
         "-X",
+        "--kafka-config",
         help="kafka options to pass through to librdkafka",
         required=False,
         default="",
     )
     parent_parser.add_argument(
-        "-f",
+        "-l",
+        "--log-file",
         help="filename to output all data to",
         required=False,
         default=None,
@@ -55,9 +60,11 @@ def main():
         _CONSUME, help="consumer mode", parents=[parent_parser, consumer_parser]
     )
     consumer_mode_parser.add_argument(
-        "-m", help="How many messages to go back", type=int
+        "-m", "--messages", help="How many messages to go back", type=int, required=True
     )
-    consumer_mode_parser.add_argument("-o", help="offset to consume from", type=int)
+    consumer_mode_parser.add_argument(
+        "-o", "--offset", help="offset to consume from", type=int, required=True
+    )
     consumer_mode_parser.add_argument(
         "-s", "--schema", required=False, default="auto", type=str
     )
@@ -76,11 +83,11 @@ def main():
         sys.exit(1)
     args = parser.parse_args()
 
-    if args.f:
-        logger.addHandler(FileHandler(args.f.name))
+    if args.log_file:
+        logger.addHandler(FileHandler(args.log_file.name))
 
     if args.command == _LISTEN:
-        listen(args.broker, args.topic)
+        listen(args.broker, args.topic, args.partition)
     elif args.command == _CONSUME:
         raise NotImplementedError
     elif args.command == _PRODUCE:
