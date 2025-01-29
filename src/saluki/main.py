@@ -17,6 +17,28 @@ _PRODUCE = "produce"
 _CONSUME = "consume"
 
 
+def parse_kafka_uri(uri: str) -> (str, str):
+    """Parse Kafka connection URI.
+
+    A broker hostname/ip must be present.
+    If username is provided, a SASL mechanism must also be provided.
+    Any other validation must be performed in the calling code.
+    """
+    security_protocol, tail = uri.split("+") if "+" in uri else ("", uri)
+    sasl_mechanism, tail = tail.split("\\") if "\\" in tail else ("", tail)
+    username, tail = tail.split("@") if "@" in tail else ("", tail)
+    broker, topic = tail.split("/") if "/" in tail else (tail, "")
+    if not broker:
+        raise RuntimeError(
+            f"Unable to parse URI {uri}, broker not defined. URI should be of form [PROTOCOL+SASL_MECHANISM\\username@]broker:9092"
+        )
+    if username and not (security_protocol and sasl_mechanism):
+        raise RuntimeError(
+            f"Unable to parse URI {uri}, PROTOCOL or SASL_MECHANISM not defined. URI should be of form [PROTOCOL+SASL_MECHANISM\\username@]broker:9092"
+        )
+    return broker, topic
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="saluki",
@@ -24,8 +46,9 @@ def main():
     )
 
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("-b", "--broker", required=True, type=str)
-    parent_parser.add_argument("-t", "--topic", required=True, type=str)
+    parent_parser.add_argument(
+        "topic", type=str, help="Kafka topic. format is broker<:port>/topic"
+    )
 
     parent_parser.add_argument(
         "-X",
@@ -106,15 +129,17 @@ def main():
         sys.exit(1)
     args = parser.parse_args()
 
+    broker, topic = parse_kafka_uri(args.topic)
+
     if args.log_file:
         logger.addHandler(FileHandler(args.log_file.name))
 
     if args.command == _LISTEN:
-        listen(args.broker, args.topic, args.partition)
+        listen(broker, topic, args.partition)
     elif args.command == _CONSUME:
         consume(
-            args.broker,
-            args.topic,
+            broker,
+            topic,
             args.partition,
             args.messages,
             args.offset,
