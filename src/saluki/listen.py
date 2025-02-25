@@ -18,6 +18,8 @@ def listen(broker: str, topic: str, partition: int | None = None) -> None:
         {
             "bootstrap.servers": broker,
             "group.id": "saluki",
+            "auto.offset.reset": "latest",
+            "enable.auto.commit": False,
         }
     )
     c.subscribe([topic])
