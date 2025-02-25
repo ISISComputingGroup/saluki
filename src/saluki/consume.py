@@ -33,6 +33,7 @@ def consume(
             "auto.offset.reset": "latest",
             "enable.auto.offset.store": False,
             "enable.auto.commit": False,
+            "metadata.max.age.ms": 6000
         }
     )
 
