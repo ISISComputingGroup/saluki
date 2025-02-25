@@ -29,6 +29,11 @@ def consume(
         {
             "bootstrap.servers": broker,
             "group.id": "saluki",
+            "session.timeout.ms": 6000,
+            "auto.offset.reset": "latest",
+            "enable.auto.offset.store": False,
+            "enable.auto.commit": False,
+            "metadata.max.age.ms": 6000
         }
     )
 

@@ -4,7 +4,7 @@ import sys
 
 import logging
 from logging import FileHandler
-
+from typing import Tuple
 
 from saluki.consume import consume
 from saluki.listen import listen
@@ -17,7 +17,7 @@ _PRODUCE = "produce"
 _CONSUME = "consume"
 
 
-def parse_kafka_uri(uri: str) -> (str, str):
+def parse_kafka_uri(uri: str) -> Tuple[str, str]:
     """Parse Kafka connection URI.
 
     A broker hostname/ip must be present.
