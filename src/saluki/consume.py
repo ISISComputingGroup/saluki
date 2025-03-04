@@ -67,8 +67,8 @@ def consume(
                 continue
             if partition is not None and msg.partition() != partition:
                 continue
-            deserialised = try_to_deserialise_message(msg.value())
-            logger.info(f"{msg.offset()}: {deserialised}")
+            schema, deserialised = try_to_deserialise_message(msg.value())
+            logger.info(f"{msg.offset()}:({schema}) {deserialised}")
     except Exception as e:
         logger.error(e)
     finally:
