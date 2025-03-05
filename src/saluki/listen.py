@@ -1,7 +1,7 @@
 import logging
 
 from confluent_kafka import Consumer, TopicPartition
-from saluki import try_to_deserialise_message
+from saluki import _deserialise_and_print_messages
 
 logger = logging.getLogger("saluki")
 
@@ -29,15 +29,7 @@ def listen(broker: str, topic: str, partition: int | None = None) -> None:
         logger.info(f"listening to {broker}/{topic}")
         while True:
             msg = c.poll(1.0)
-            if msg is None:
-                continue
-            if msg.error():
-                logger.error("Consumer error: {}".format(msg.error()))
-                continue
-            if partition is not None and msg.partition() != partition:
-                continue
-            schema, deserialised = try_to_deserialise_message(msg.value())
-            logger.info(f"{msg.offset()}:({schema}) {deserialised}")
+            _deserialise_and_print_messages([msg], partition)
     except KeyboardInterrupt:
         logger.debug("finished listening")
     finally:
