@@ -1,7 +1,7 @@
 import logging
 
 from confluent_kafka import Consumer, TopicPartition
-from saluki import try_to_deserialise_message
+from saluki import _deserialise_and_print_messages
 
 logger = logging.getLogger("saluki")
 
@@ -59,16 +59,7 @@ def consume(
     try:
         logger.info(f"consuming {num_messages} messages")
         msgs = c.consume(num_messages)
-        for msg in msgs:
-            if msg is None:
-                continue
-            if msg.error():
-                logger.error("Consumer error: {}".format(msg.error()))
-                continue
-            if partition is not None and msg.partition() != partition:
-                continue
-            schema, deserialised = try_to_deserialise_message(msg.value())
-            logger.info(f"{msg.offset()}:({schema}) {deserialised}")
+        _deserialise_and_print_messages(msgs, partition)
     except Exception as e:
         logger.error(e)
     finally:
