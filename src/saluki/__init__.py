@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple
 
 from streaming_data_types import DESERIALISERS
 from streaming_data_types.exceptions import StreamingDataTypesException
@@ -11,7 +12,7 @@ def _fallback_deserialiser(payload: bytes) -> str:
     return payload.decode()
 
 
-def try_to_deserialise_message(payload: bytes) -> str:
+def try_to_deserialise_message(payload: bytes) -> Tuple[str, str]:
     logger.debug(f"got some data: {payload}")
     schema = get_schema(payload)
     deserialiser = (
@@ -23,4 +24,4 @@ def try_to_deserialise_message(payload: bytes) -> str:
         pass  # TODO
     except KeyError:
         pass
-    return deserialiser(payload)
+    return schema, deserialiser(payload)

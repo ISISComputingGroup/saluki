@@ -36,8 +36,8 @@ def listen(broker: str, topic: str, partition: int | None = None) -> None:
                 continue
             if partition is not None and msg.partition() != partition:
                 continue
-            deserialised = try_to_deserialise_message(msg.value())
-            logger.info(f"{msg.offset()}: {deserialised}")
+            schema, deserialised = try_to_deserialise_message(msg.value())
+            logger.info(f"{msg.offset()}:({schema}) {deserialised}")
     except KeyboardInterrupt:
         logger.debug("finished listening")
     finally:
