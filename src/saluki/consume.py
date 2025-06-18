@@ -53,7 +53,7 @@ def consume(
                 - num_messages
             )
 
-    logger.info(f"starting at {start}")
+    logger.info(f"starting at offset {start}")
     c.assign([TopicPartition(topic, partition, start)])
 
     try:
