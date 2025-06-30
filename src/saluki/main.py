@@ -55,7 +55,7 @@ def main():
         "--kafka-config",
         help="kafka options to pass through to librdkafka",
         required=False,
-        default="",
+        default=None,
     )
     parent_parser.add_argument(
         "-l",
@@ -112,22 +112,13 @@ def main():
         "-p", "--partition", required=False, type=int, default=None
     )
 
-    # Producer mode - add this later
-    producer_parser = sub_parsers.add_parser(
-        _PRODUCE, help="producer mode", parents=[parent_parser]
-    )
-    producer_parser.add_argument(
-        "-f",
-        "--filename",
-        help="JSON file to produce",
-        required=True,
-        type=argparse.FileType("r"),
-    )
-
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
     args = parser.parse_args()
+
+    if args.kafka_config is not None:
+        raise NotImplementedError("-X is not implemented yet.")
 
     broker, topic = parse_kafka_uri(args.topic)
 
