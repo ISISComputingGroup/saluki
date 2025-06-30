@@ -3,7 +3,6 @@ import sys
 
 
 import logging
-from logging import FileHandler
 from typing import Tuple
 
 from saluki.consume import consume
@@ -123,7 +122,7 @@ def main():
     broker, topic = parse_kafka_uri(args.topic)
 
     if args.log_file:
-        logger.addHandler(FileHandler(args.log_file.name))
+        logger.addHandler(logging.FileHandler(args.log_file.name))
 
     if args.command == _LISTEN:
         listen(broker, topic, args.partition)
@@ -136,8 +135,6 @@ def main():
             args.offset,
             args.go_forwards,
         )
-    elif args.command == _PRODUCE:
-        raise NotImplementedError
 
 
 if __name__ == "__main__":
