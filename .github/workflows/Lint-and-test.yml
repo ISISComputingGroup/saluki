@@ -10,13 +10,18 @@ on:
     branches: [ "main" ]
 
 permissions:
+  actions: read
   contents: read
+  security-events: write
 
 jobs:
-  build:
-
+  call-workflow:
+    uses: ISISComputingGroup/reusable-workflows/.github/workflows/linters.yml@main
+    with:
+      compare-branch: origin/main
+      python-ver: '3.12'
+  tests:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Install uv and set the python version
@@ -25,12 +30,5 @@ jobs:
         python-version: "3.12"
     - name: Install dependencies
       run: uv sync --all-extras --dev
-    - name: ruff format check
-      run: uv run ruff format --check
-    - name: ruff check
-      run: uv run ruff check
-    - name: pyright
-      run: uv run pyright
     - name: Test with pytest
       run: uv run pytest tests
-
