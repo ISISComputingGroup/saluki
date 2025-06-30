@@ -12,7 +12,7 @@ See `saluki --help` for all options.
 ## Consume from a topic
 `saluki consume mybroker:9092/mytopic -p 1 -o 123456 -m 10` - This will print 9 messages before (and inclusively the offset specified) offset `123456` of `mytopic` on `mybroker`, in partition 1.
 
-Use the `-g` flag to go the other way, ie. in the above example to consume 9 messages FROM offset 123456
+Use the `-g` flag to go the other way, ie. in the above example to consume the 9 messages _after_ offset 123456
 
 # Install 
 `pip install saluki`
