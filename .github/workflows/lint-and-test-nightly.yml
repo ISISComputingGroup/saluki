@@ -1,7 +1,9 @@
 name: lint-and-test-nightly
 on:
+  workflow_run:
   schedule:
     - cron: "0 0 * * *"
+  
 
 jobs:
   lint-and-test-nightly:
