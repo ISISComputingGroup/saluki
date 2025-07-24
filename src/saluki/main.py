@@ -1,10 +1,10 @@
 import argparse
 import logging
 import sys
-from typing import Tuple
 
 from saluki.consume import consume
 from saluki.listen import listen
+from saluki.utils import parse_kafka_uri
 
 logger = logging.getLogger("saluki")
 logging.basicConfig(level=logging.INFO)
@@ -14,30 +14,6 @@ _PRODUCE = "produce"
 _CONSUME = "consume"
 
 
-def parse_kafka_uri(uri: str) -> Tuple[str, str]:
-    """Parse Kafka connection URI.
-
-    A broker hostname/ip must be present.
-    If username is provided, a SASL mechanism must also be provided.
-    Any other validation must be performed in the calling code.
-    """
-    security_protocol, tail = uri.split("+") if "+" in uri else ("", uri)
-    sasl_mechanism, tail = tail.split("\\") if "\\" in tail else ("", tail)
-    username, tail = tail.split("@") if "@" in tail else ("", tail)
-    broker, topic = tail.split("/") if "/" in tail else (tail, "")
-    if not broker:
-        raise RuntimeError(
-            f"Unable to parse URI {uri}, broker not defined. URI should be of form"
-            f" [PROTOCOL+SASL_MECHANISM\\username@]broker:9092"
-        )
-    if username and not (security_protocol and sasl_mechanism):
-        raise RuntimeError(
-            f"Unable to parse URI {uri}, PROTOCOL or SASL_MECHANISM not defined."
-            f" URI should be of form [PROTOCOL+SASL_MECHANISM\\username@]broker:9092"
-        )
-    return broker, topic
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="saluki",
@@ -45,7 +21,9 @@ def main() -> None:
     )
 
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("topic", type=str, help="Kafka topic. format is broker<:port>/topic")
+    parent_parser.add_argument(
+        "topic", type=str, help="Kafka topic. format is broker<:port>/topic"
+    )
 
     parent_parser.add_argument(
         "-X",
@@ -63,7 +41,9 @@ def main() -> None:
         type=argparse.FileType("a"),
     )
 
-    sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")
+    sub_parsers = parser.add_subparsers(
+        help="sub-command help", required=True, dest="command"
+    )
 
     consumer_parser = argparse.ArgumentParser(add_help=False)
     consumer_parser.add_argument(
@@ -88,16 +68,24 @@ def main() -> None:
     consumer_mode_parser.add_argument(
         "-o", "--offset", help="offset to consume from", type=int, required=False
     )
-    consumer_mode_parser.add_argument("-s", "--schema", required=False, default="auto", type=str)
-    consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
-    consumer_mode_parser.add_argument("-p", "--partition", required=False, type=int, default=0)
+    consumer_mode_parser.add_argument(
+        "-s", "--schema", required=False, default="auto", type=str
+    )
+    consumer_mode_parser.add_argument(
+        "-g", "--go-forwards", required=False, action="store_true"
+    )
+    consumer_mode_parser.add_argument(
+        "-p", "--partition", required=False, type=int, default=0
+    )
 
     listen_parser = sub_parsers.add_parser(
         _LISTEN,
         help="listen mode - listen until KeyboardInterrupt",
         parents=[parent_parser, consumer_parser],
     )
-    listen_parser.add_argument("-p", "--partition", required=False, type=int, default=None)
+    listen_parser.add_argument(
+        "-p", "--partition", required=False, type=int, default=None
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()

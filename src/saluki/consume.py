@@ -1,7 +1,7 @@
 import logging
 
 from confluent_kafka import Consumer, TopicPartition
-from saluki import _deserialise_and_print_messages
+from saluki.utils import _deserialise_and_print_messages
 
 logger = logging.getLogger("saluki")
 
@@ -53,15 +53,15 @@ def consume(
                 - num_messages
             )
 
-    logger.info(f"starting at offset {start}")
+    logger.info(f"Starting at offset {start}")
     c.assign([TopicPartition(topic, partition, start)])
 
     try:
-        logger.info(f"consuming {num_messages} messages")
+        logger.info(f"Consuming {num_messages} messages")
         msgs = c.consume(num_messages)
         _deserialise_and_print_messages(msgs, partition)
-    except Exception as e:
-        logger.error(e)
+    except Exception:
+        logger.exception("Got exception while consuming:")
     finally:
-        logger.debug(f"closing consumer {c}")
+        logger.debug(f"Closing consumer {c}")
         c.close()
