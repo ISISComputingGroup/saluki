@@ -39,8 +39,7 @@ def consume(
 
     if go_forwards:
         if offset is None:
-            logger.error("Can't go forwards without an offset")
-            return
+            raise ValueError("Can't go forwards without an offset")
         start = offset
     else:
         if offset is not None:

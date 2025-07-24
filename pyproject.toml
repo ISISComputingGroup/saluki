@@ -25,6 +25,29 @@ dev = [
     "pyright",
     "ruff",
     "pytest",
+    "pytest-cov"
 ]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 100
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
+  "@abstractmethod",
+]
+omit = ["main.py"]
+
+
+[tool.coverage.html]
+directory = "coverage_html_report"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = "--cov --cov-report=html -vv"
 
 [tool.setuptools_scm]

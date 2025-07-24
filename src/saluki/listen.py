@@ -32,8 +32,6 @@ def listen(broker: str, topic: str, partition: int | None = None) -> None:
             _deserialise_and_print_messages([msg], partition)
     except KeyboardInterrupt:
         logger.debug("finished listening")
-    except Exception:
-        logger.exception("Got exception while listening:")
     finally:
         logger.debug(f"closing consumer {c}")
         c.close()

@@ -13,6 +13,7 @@ from saluki.utils import parse_kafka_uri
 
 # test _parse_timestamp
 
+
 def test_uri_with_broker_name_and_topic_successfully_split():
     test_broker = "localhost"
     test_topic = "some_topic"
