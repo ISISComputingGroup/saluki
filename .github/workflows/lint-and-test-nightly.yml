@@ -1,0 +1,10 @@
+name: lint-and-test-nightly
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+  
+
+jobs:
+  lint-and-test-nightly:
+    uses: ./.github/workflows/Lint-and-test.yml

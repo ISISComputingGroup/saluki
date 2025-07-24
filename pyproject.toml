@@ -10,15 +10,15 @@ dependencies = [
     "confluent-kafka"
 ]
 readme = {file = "README.md", content-type = "text/markdown"}
-license = {file = "LICENSE"}
+license-files = ["LICENSE"]
 
 [project.scripts]
 saluki = "saluki.main:main"
 
 [project.urls]
-"Homepage" = "https://github.com/rerpha/saluki"
-"Bug Reports" = "https://github.com/rerpha/saluki/issues"
-"Source" = "https://github.com/rerpha/saluki"
+"Homepage" = "https://github.com/ISISComputingGroup/saluki"
+"Bug Reports" = "https://github.com/ISISComputingGroup/saluki/issues"
+"Source" = "https://github.com/ISISComputingGroup/saluki"
 
 [project.optional-dependencies]
 dev = [
