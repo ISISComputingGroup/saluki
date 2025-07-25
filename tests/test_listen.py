@@ -5,6 +5,7 @@ from confluent_kafka import TopicPartition
 from saluki.listen import listen
 from unittest import mock
 
+
 def test_listen_with_partition_assigns_to_partition():
     expected_partition = 123
     topic = "sometopic"

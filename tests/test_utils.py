@@ -1,6 +1,23 @@
+from unittest.mock import Mock
+
 import pytest
 
-from saluki.utils import parse_kafka_uri
+from saluki.utils import parse_kafka_uri, _parse_timestamp, _deserialise_and_print_messages
+from confluent_kafka import Message
+
+@pytest.fixture
+def mock_message():
+    return Mock(spec=Message)
+
+def test_deserialising_message_with_no_message_continues(mock_message):
+    _deserialise_and_print_messages([mock_message])
+
+def test_deserialising_message_with_error_continues(mock_message):
+    pass
+
+def test_deserialising_message_with_wrong_partition_continues(mock_message):
+    pass
+
 
 
 # test with normal payload
@@ -11,8 +28,14 @@ from saluki.utils import parse_kafka_uri
 
 # test exception while deserialising
 
-# test _parse_timestamp
 
+def test_parse_timestamp_with_valid_timestamp(mock_message):
+    mock_message.timestamp.return_value = (1, 1753434939336)
+    assert _parse_timestamp(mock_message) == '2025-07-25 10:15:39.336000'
+
+def test_parse_timestamp_with_timestamp_not_available(mock_message):
+    mock_message.timestamp.return_value = (2, "blah")
+    assert _parse_timestamp(mock_message) == "Unknown"
 
 def test_uri_with_broker_name_and_topic_successfully_split():
     test_broker = "localhost"

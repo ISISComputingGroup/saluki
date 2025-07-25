@@ -40,7 +40,7 @@ exclude_lines = [
   "if typing.TYPE_CHECKING:",
   "@abstractmethod",
 ]
-omit = ["main.py"]
+omit = ["main.py"]  # No logic here besides argparse
 
 
 [tool.coverage.html]
