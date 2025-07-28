@@ -7,7 +7,8 @@ name = "saluki"
 dynamic = ["version"]
 dependencies = [
     "ess-streaming-data-types",
-    "confluent-kafka"
+    "confluent-kafka",
+    "tzdata"
 ]
 readme = {file = "README.md", content-type = "text/markdown"}
 license-files = ["LICENSE"]

@@ -1,6 +1,7 @@
 import datetime
 import logging
 from typing import List, Tuple
+from zoneinfo import ZoneInfo
 
 from confluent_kafka import Message
 from streaming_data_types import DESERIALISERS
@@ -66,8 +67,10 @@ def _parse_timestamp(msg: Message) -> str:
     """
     timestamp_type, timestamp_ms_from_epoch = msg.timestamp()
     if timestamp_type == 1:  # TIMESTAMP_CREATE_TIME
-        return datetime.datetime.fromtimestamp(timestamp_ms_from_epoch / 1000).strftime(
-            "%Y-%m-%d %H:%M:%S.%f"
+        return (
+            datetime.datetime.fromtimestamp(timestamp_ms_from_epoch / 1000)
+            .astimezone(ZoneInfo("UTC"))
+            .strftime("%Y-%m-%d %H:%M:%S.%f")
         )
     else:
         # TIMESTAMP_NOT_AVAILABLE or TIMESTAMP_LOG_APPEND_TIME

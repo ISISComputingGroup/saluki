@@ -64,11 +64,11 @@ def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
         ok_message = Mock(spec=Message)
         ok_message.value.return_value = b""
         ok_message.error.return_value = False
-        ok_message.timestamp.return_value = 1, 1
+        ok_message.timestamp.return_value = 2, 1
 
         mock_message.value.side_effect = Exception
         mock_message.error.return_value = False
-        mock_message.timestamp.return_value = 1, 1
+        mock_message.timestamp.return_value = 2, 1
 
         _deserialise_and_print_messages([mock_message, ok_message], None)
         assert logger.info.call_count == 1
@@ -125,7 +125,7 @@ def test_message_that_has_valid_schema_and_valid_payload(mock_message):
 
 def test_parse_timestamp_with_valid_timestamp(mock_message):
     mock_message.timestamp.return_value = (1, 1753434939336)
-    assert _parse_timestamp(mock_message) == "2025-07-25 10:15:39.336000"
+    assert _parse_timestamp(mock_message) == "2025-07-25 09:15:39.336000"
 
 
 def test_parse_timestamp_with_timestamp_not_available(mock_message):
