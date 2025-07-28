@@ -20,16 +20,10 @@ def __try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None
 
     logger.debug(f"schema: {schema}")
 
-    try:
-        deserialiser = DESERIALISERS[schema]
-    except KeyError:
-        logger.exception(f"Invalid schema: {schema}, falling back to raw bytes decode")
+    def fallback_deserialiser(payload: bytes) -> str:
+        return payload.decode()
 
-        def fallback_deserialiser(payload: bytes) -> str:
-            return payload.decode()
-
-        deserialiser = fallback_deserialiser  # Fall back to this if we need to so data isn't lost
-
+    deserialiser = DESERIALISERS.get(schema, fallback_deserialiser)
     logger.debug(f"Deserialiser: {deserialiser}")
 
     try:
