@@ -1,6 +1,10 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from streaming_data_types.forwarder_config_update_fc00 import (
+    ConfigurationUpdate,
+    StreamInfo,
+)
 
 from saluki.utils import (
     parse_kafka_uri,
@@ -51,30 +55,72 @@ def test_deserialising_empty_message(mock_message):
     assert (None, "") == __try_to_deserialise_message(b"")
 
 
-def test_deserialising_message_with_invalid_schema_falls_back_to_raw_bytes_decode(
-    mock_message,
-):
-    pass
+def test_deserialising_message_with_invalid_schema_falls_back_to_raw_bytes_decode():
+    assert __try_to_deserialise_message(b"blah") == (None, "blah")
 
 
 def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
-    pass
+    with patch("saluki.utils.logger") as logger:
+        ok_message = Mock(spec=Message)
+        ok_message.value.return_value = b""
+        ok_message.error.return_value = False
+        ok_message.timestamp.return_value = 1, 1
+
+        mock_message.value.side_effect = Exception
+        mock_message.error.return_value = False
+        mock_message.timestamp.return_value = 1, 1
+
+        _deserialise_and_print_messages([mock_message, ok_message], None)
+        assert logger.info.call_count == 1
+
+
+def test_message_that_has_valid_schema_but_empty_payload():
+    with pytest.raises(Exception):
+        # Empty fc00 message - valid schema but not valid payload
+        __try_to_deserialise_message(b" 	  fc00")
 
 
 def test_schema_that_isnt_in_deserialiser_list(mock_message):
-    pass
-
-
-def test_message_that_has_valid_schema_but_empty_payload(mock_message):
-    pass
+    assert __try_to_deserialise_message(b" 	  blah123") == ("blah", " \t  blah123")
 
 
 def test_message_that_has_valid_schema_but_invalid_payload(mock_message):
-    pass
+    with pytest.raises(Exception):
+        __try_to_deserialise_message(b" 	  fc0012345")
 
 
 def test_message_that_has_valid_schema_and_valid_payload(mock_message):
-    pass
+    assert __try_to_deserialise_message(
+        b"\x10\x00\x00\x00\x66\x63\x30\x30\x08\x00\x0c\x00\x06\x00\x08\x00\x08\x00\x00\x00\x00\x00\x01\x00\x04\x00\x00\x00\x03\x00\x00\x00\x0c\x00\x00\x00\x2c\x00\x00\x00\x4c\x00\x00\x00\xea\xff\xff\xff\x00\x00\x00\x00\x7c\x00\x00\x00\x6c\x00\x00\x00\x50\x00\x00\x00\x01\x00\x0e\x00\x16\x00\x08\x00\x0c\x00\x10\x00\x14\x00\x04\x00\x0e\x00\x00\x00\x00\x00\x00\x00\x9c\x00\x00\x00\x8c\x00\x00\x00\x70\x00\x00\x00\x01\x00\x0e\x00\x18\x00\x08\x00\x0c\x00\x10\x00\x16\x00\x04\x00\x0e\x00\x00\x00\x00\x00\x00\x00\xbc\x00\x00\x00\xac\x00\x00\x00\x90\x00\x00\x00\x00\x00\x01\x00\x11\x00\x00\x00\x4e\x44\x57\x32\x36\x37\x32\x5f\x73\x61\x6d\x70\x6c\x65\x45\x6e\x76\x00\x00\x00\x04\x00\x00\x00\x66\x31\x34\x34\x00\x00\x00\x00\x1b\x00\x00\x00\x54\x45\x3a\x4e\x44\x57\x32\x36\x37\x32\x3a\x43\x53\x3a\x53\x42\x3a\x4d\x42\x42\x49\x5f\x42\x4c\x4f\x43\x4b\x00\x11\x00\x00\x00\x4e\x44\x57\x32\x36\x37\x32\x5f\x73\x61\x6d\x70\x6c\x65\x45\x6e\x76\x00\x00\x00\x04\x00\x00\x00\x66\x31\x34\x34\x00\x00\x00\x00\x19\x00\x00\x00\x54\x45\x3a\x4e\x44\x57\x32\x36\x37\x32\x3a\x43\x53\x3a\x53\x42\x3a\x42\x49\x5f\x42\x4c\x4f\x43\x4b\x00\x00\x00\x11\x00\x00\x00\x4e\x44\x57\x32\x36\x37\x32\x5f\x73\x61\x6d\x70\x6c\x65\x45\x6e\x76\x00\x00\x00\x04\x00\x00\x00\x66\x31\x34\x34\x00\x00\x00\x00\x1c\x00\x00\x00\x54\x45\x3a\x4e\x44\x57\x32\x36\x37\x32\x3a\x43\x53\x3a\x53\x42\x3a\x46\x4c\x4f\x41\x54\x5f\x42\x4c\x4f\x43\x4b\x00\x00\x00\x00"
+    ) == (
+        "fc00",
+        ConfigurationUpdate(
+            config_change=1,
+            streams=[
+                StreamInfo(
+                    channel="TE:NDW2672:CS:SB:MBBI_BLOCK",
+                    schema="f144",
+                    topic="NDW2672_sampleEnv",
+                    protocol=1,
+                    periodic=0,
+                ),
+                StreamInfo(
+                    channel="TE:NDW2672:CS:SB:BI_BLOCK",
+                    schema="f144",
+                    topic="NDW2672_sampleEnv",
+                    protocol=1,
+                    periodic=0,
+                ),
+                StreamInfo(
+                    channel="TE:NDW2672:CS:SB:FLOAT_BLOCK",
+                    schema="f144",
+                    topic="NDW2672_sampleEnv",
+                    protocol=1,
+                    periodic=0,
+                ),
+            ],
+        ),
+    )
 
 
 def test_parse_timestamp_with_valid_timestamp(mock_message):
