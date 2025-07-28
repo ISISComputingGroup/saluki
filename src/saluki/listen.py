@@ -1,6 +1,7 @@
 import logging
 
 from confluent_kafka import Consumer, TopicPartition
+
 from saluki.utils import _deserialise_and_print_messages
 
 logger = logging.getLogger("saluki")

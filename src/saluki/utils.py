@@ -1,13 +1,11 @@
 import datetime
 import logging
-from typing import Tuple, List
+from typing import List, Tuple
 
 from confluent_kafka import Message
-
 from streaming_data_types import DESERIALISERS
 from streaming_data_types.exceptions import ShortBufferException
 from streaming_data_types.utils import get_schema
-
 
 logger = logging.getLogger("saluki")
 
@@ -29,9 +27,7 @@ def __try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None
         def fallback_deserialiser(payload: bytes) -> str:
             return payload.decode()
 
-        deserialiser = (
-            fallback_deserialiser  # Fall back to this if we need to so data isn't lost
-        )
+        deserialiser = fallback_deserialiser  # Fall back to this if we need to so data isn't lost
 
     logger.debug(f"Deserialiser: {deserialiser}")
 

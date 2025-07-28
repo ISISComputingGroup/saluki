@@ -1,6 +1,7 @@
 import logging
 
 from confluent_kafka import Consumer, TopicPartition
+
 from saluki.utils import _deserialise_and_print_messages
 
 logger = logging.getLogger("saluki")
@@ -46,9 +47,7 @@ def consume(
             start = offset - num_messages + 1
         else:
             start = (
-                c.get_watermark_offsets(TopicPartition(topic, partition), cached=False)[
-                    1
-                ]
+                c.get_watermark_offsets(TopicPartition(topic, partition), cached=False)[1]
                 - num_messages
             )
 

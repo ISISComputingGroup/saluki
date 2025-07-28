@@ -1,18 +1,18 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from confluent_kafka import Message
 from streaming_data_types.forwarder_config_update_fc00 import (
     ConfigurationUpdate,
     StreamInfo,
 )
 
 from saluki.utils import (
-    parse_kafka_uri,
-    _parse_timestamp,
-    _deserialise_and_print_messages,
     __try_to_deserialise_message,
+    _deserialise_and_print_messages,
+    _parse_timestamp,
+    parse_kafka_uri,
 )
-from confluent_kafka import Message
 
 
 @pytest.fixture

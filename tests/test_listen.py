@@ -1,9 +1,8 @@
-from unittest.mock import MagicMock
 
-from confluent_kafka import TopicPartition
+
+from unittest import mock
 
 from saluki.listen import listen
-from unittest import mock
 
 
 def test_listen_with_partition_assigns_to_partition():
