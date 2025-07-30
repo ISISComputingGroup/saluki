@@ -8,9 +8,9 @@ from streaming_data_types.forwarder_config_update_fc00 import (
 )
 
 from saluki.utils import (
+    _parse_timestamp,
     _try_to_deserialise_message,
     deserialise_and_print_messages,
-    _parse_timestamp,
     parse_kafka_uri,
 )
 
