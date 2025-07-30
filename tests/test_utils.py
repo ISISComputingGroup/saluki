@@ -8,8 +8,8 @@ from streaming_data_types.forwarder_config_update_fc00 import (
 )
 
 from saluki.utils import (
-    __try_to_deserialise_message,
-    _deserialise_and_print_messages,
+    _try_to_deserialise_message,
+    deserialise_and_print_messages,
     _parse_timestamp,
     parse_kafka_uri,
 )
@@ -21,15 +21,15 @@ def mock_message():
 
 
 def test_deserialising_message_with_no_message_continues():
-    with patch("saluki.utils.__try_to_deserialise_message") as mock_deserialise_message:
-        _deserialise_and_print_messages([None], None)
+    with patch("saluki.utils._try_to_deserialise_message") as mock_deserialise_message:
+        deserialise_and_print_messages([None], None)
         mock_deserialise_message.assert_not_called()
 
 
 def test_deserialising_message_with_error_continues(mock_message):
     mock_message.error.return_value = "Some error"
-    with patch("saluki.utils.__try_to_deserialise_message") as mock_deserialise_message:
-        _deserialise_and_print_messages([mock_message], None)
+    with patch("saluki.utils._try_to_deserialise_message") as mock_deserialise_message:
+        deserialise_and_print_messages([mock_message], None)
         mock_deserialise_message.assert_not_called()
 
 
@@ -37,8 +37,8 @@ def test_deserialising_message_with_wrong_partition_continues(mock_message):
     noninteresting_partition = 123
     mock_message.error.return_value = False
     mock_message.partition.return_value = noninteresting_partition
-    with patch("saluki.utils.__try_to_deserialise_message") as mock_deserialise_message:
-        _deserialise_and_print_messages([mock_message], 234)
+    with patch("saluki.utils._try_to_deserialise_message") as mock_deserialise_message:
+        deserialise_and_print_messages([mock_message], 234)
         mock_deserialise_message.assert_not_called()
 
 
@@ -46,17 +46,17 @@ def test_deserialising_message_with_correct_partition_calls_deserialise(mock_mes
     partition = 123
     mock_message.error.return_value = False
     mock_message.partition.return_value = partition
-    with patch("saluki.utils.__try_to_deserialise_message") as mock_deserialise_message:
-        _deserialise_and_print_messages([mock_message], partition)
+    with patch("saluki.utils._try_to_deserialise_message") as mock_deserialise_message:
+        deserialise_and_print_messages([mock_message], partition)
         mock_deserialise_message.assert_called_once()
 
 
 def test_deserialising_empty_message(mock_message):
-    assert (None, "") == __try_to_deserialise_message(b"")
+    assert (None, "") == _try_to_deserialise_message(b"")
 
 
 def test_deserialising_message_with_invalid_schema_falls_back_to_raw_bytes_decode():
-    assert __try_to_deserialise_message(b"blah") == (None, "blah")
+    assert _try_to_deserialise_message(b"blah") == (None, "blah")
 
 
 def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
@@ -70,27 +70,27 @@ def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
         mock_message.error.return_value = False
         mock_message.timestamp.return_value = 2, 1
 
-        _deserialise_and_print_messages([mock_message, ok_message], None)
+        deserialise_and_print_messages([mock_message, ok_message], None)
         assert logger.info.call_count == 1
 
 
 def test_message_that_has_valid_schema_but_empty_payload():
     with pytest.raises(Exception):
         # Empty fc00 message - valid schema but not valid payload
-        __try_to_deserialise_message(b" 	  fc00")
+        _try_to_deserialise_message(b" 	  fc00")
 
 
 def test_schema_that_isnt_in_deserialiser_list(mock_message):
-    assert __try_to_deserialise_message(b" 	  blah123") == ("blah", " \t  blah123")
+    assert _try_to_deserialise_message(b" 	  blah123") == ("blah", " \t  blah123")
 
 
 def test_message_that_has_valid_schema_but_invalid_payload(mock_message):
     with pytest.raises(Exception):
-        __try_to_deserialise_message(b" 	  fc0012345")
+        _try_to_deserialise_message(b" 	  fc0012345")
 
 
 def test_message_that_has_valid_schema_and_valid_payload(mock_message):
-    assert __try_to_deserialise_message(
+    assert _try_to_deserialise_message(
         b"\x10\x00\x00\x00\x66\x63\x30\x30\x08\x00\x0c\x00\x06\x00\x08\x00\x08\x00\x00\x00\x00\x00\x01\x00\x04\x00\x00\x00\x03\x00\x00\x00\x0c\x00\x00\x00\x2c\x00\x00\x00\x4c\x00\x00\x00\xea\xff\xff\xff\x00\x00\x00\x00\x7c\x00\x00\x00\x6c\x00\x00\x00\x50\x00\x00\x00\x01\x00\x0e\x00\x16\x00\x08\x00\x0c\x00\x10\x00\x14\x00\x04\x00\x0e\x00\x00\x00\x00\x00\x00\x00\x9c\x00\x00\x00\x8c\x00\x00\x00\x70\x00\x00\x00\x01\x00\x0e\x00\x18\x00\x08\x00\x0c\x00\x10\x00\x16\x00\x04\x00\x0e\x00\x00\x00\x00\x00\x00\x00\xbc\x00\x00\x00\xac\x00\x00\x00\x90\x00\x00\x00\x00\x00\x01\x00\x11\x00\x00\x00\x4e\x44\x57\x32\x36\x37\x32\x5f\x73\x61\x6d\x70\x6c\x65\x45\x6e\x76\x00\x00\x00\x04\x00\x00\x00\x66\x31\x34\x34\x00\x00\x00\x00\x1b\x00\x00\x00\x54\x45\x3a\x4e\x44\x57\x32\x36\x37\x32\x3a\x43\x53\x3a\x53\x42\x3a\x4d\x42\x42\x49\x5f\x42\x4c\x4f\x43\x4b\x00\x11\x00\x00\x00\x4e\x44\x57\x32\x36\x37\x32\x5f\x73\x61\x6d\x70\x6c\x65\x45\x6e\x76\x00\x00\x00\x04\x00\x00\x00\x66\x31\x34\x34\x00\x00\x00\x00\x19\x00\x00\x00\x54\x45\x3a\x4e\x44\x57\x32\x36\x37\x32\x3a\x43\x53\x3a\x53\x42\x3a\x42\x49\x5f\x42\x4c\x4f\x43\x4b\x00\x00\x00\x11\x00\x00\x00\x4e\x44\x57\x32\x36\x37\x32\x5f\x73\x61\x6d\x70\x6c\x65\x45\x6e\x76\x00\x00\x00\x04\x00\x00\x00\x66\x31\x34\x34\x00\x00\x00\x00\x1c\x00\x00\x00\x54\x45\x3a\x4e\x44\x57\x32\x36\x37\x32\x3a\x43\x53\x3a\x53\x42\x3a\x46\x4c\x4f\x41\x54\x5f\x42\x4c\x4f\x43\x4b\x00\x00\x00\x00"
     ) == (
         "fc00",

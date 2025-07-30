@@ -11,7 +11,7 @@ from streaming_data_types.utils import get_schema
 logger = logging.getLogger("saluki")
 
 
-def __try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]:
+def _try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]:
     logger.debug(f"got some data: {payload}")
     try:
         schema = get_schema(payload)
@@ -34,7 +34,7 @@ def __try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None
     return schema, ret
 
 
-def _deserialise_and_print_messages(msgs: List[Message], partition: int | None) -> None:
+def deserialise_and_print_messages(msgs: List[Message], partition: int | None) -> None:
     for msg in msgs:
         try:
             if msg is None:
@@ -44,7 +44,7 @@ def _deserialise_and_print_messages(msgs: List[Message], partition: int | None) 
                 continue
             if partition is not None and msg.partition() != partition:
                 continue
-            schema, deserialised = __try_to_deserialise_message(msg.value())
+            schema, deserialised = _try_to_deserialise_message(msg.value())
             time = _parse_timestamp(msg)
             logger.info(f"{msg.offset()} ({time}):({schema}) {deserialised}")
         except Exception as e:

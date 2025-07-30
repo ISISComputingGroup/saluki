@@ -8,7 +8,7 @@ def test_listen_with_partition_assigns_to_partition():
     topic = "sometopic"
     with (
         mock.patch(
-            "saluki.listen._deserialise_and_print_messages",
+            "saluki.listen.deserialise_and_print_messages",
             side_effect=KeyboardInterrupt,
         ),
         mock.patch("saluki.listen.Consumer") as c,
@@ -21,7 +21,7 @@ def test_listen_with_partition_assigns_to_partition():
 def test_keyboard_interrupt_causes_consumer_to_close():
     with (
         mock.patch(
-            "saluki.listen._deserialise_and_print_messages",
+            "saluki.listen.deserialise_and_print_messages",
             side_effect=KeyboardInterrupt,
         ),
         mock.patch("saluki.listen.Consumer") as c,
