@@ -26,10 +26,7 @@ def _try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]
     deserialiser = DESERIALISERS.get(schema if schema is not None else "", fallback_deserialiser)
     logger.debug(f"Deserialiser: {deserialiser}")
 
-    try:
-        ret = deserialiser(payload)
-    except Exception as e:
-        raise e
+    ret = deserialiser(payload)
 
     return schema, ret
 
