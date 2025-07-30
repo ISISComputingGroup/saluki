@@ -1,10 +1,10 @@
 import argparse
 import logging
 import sys
-from typing import Tuple
 
 from saluki.consume import consume
 from saluki.listen import listen
+from saluki.utils import parse_kafka_uri
 
 logger = logging.getLogger("saluki")
 logging.basicConfig(level=logging.INFO)
@@ -12,30 +12,6 @@ logging.basicConfig(level=logging.INFO)
 _LISTEN = "listen"
 _PRODUCE = "produce"
 _CONSUME = "consume"
-
-
-def parse_kafka_uri(uri: str) -> Tuple[str, str]:
-    """Parse Kafka connection URI.
-
-    A broker hostname/ip must be present.
-    If username is provided, a SASL mechanism must also be provided.
-    Any other validation must be performed in the calling code.
-    """
-    security_protocol, tail = uri.split("+") if "+" in uri else ("", uri)
-    sasl_mechanism, tail = tail.split("\\") if "\\" in tail else ("", tail)
-    username, tail = tail.split("@") if "@" in tail else ("", tail)
-    broker, topic = tail.split("/") if "/" in tail else (tail, "")
-    if not broker:
-        raise RuntimeError(
-            f"Unable to parse URI {uri}, broker not defined. URI should be of form"
-            f" [PROTOCOL+SASL_MECHANISM\\username@]broker:9092"
-        )
-    if username and not (security_protocol and sasl_mechanism):
-        raise RuntimeError(
-            f"Unable to parse URI {uri}, PROTOCOL or SASL_MECHANISM not defined."
-            f" URI should be of form [PROTOCOL+SASL_MECHANISM\\username@]broker:9092"
-        )
-    return broker, topic
 
 
 def main() -> None:
