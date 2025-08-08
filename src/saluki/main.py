@@ -10,7 +10,6 @@ logger = logging.getLogger("saluki")
 logging.basicConfig(level=logging.INFO)
 
 _LISTEN = "listen"
-_PRODUCE = "produce"
 _CONSUME = "consume"
 
 
