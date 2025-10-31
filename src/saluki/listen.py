@@ -7,7 +7,7 @@ from saluki.utils import deserialise_and_print_messages
 logger = logging.getLogger("saluki")
 
 
-def listen(broker: str, topic: str, partition: int | None = None) -> None:
+def listen(broker: str, topic: str, partition: int | None = None, filter: list[str] | None = None) -> None:
     """
     Listen to a topic and deserialise each message
     :param broker: the broker address, including the port

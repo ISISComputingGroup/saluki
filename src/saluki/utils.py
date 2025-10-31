@@ -31,7 +31,7 @@ def _try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]
     return schema, ret
 
 
-def deserialise_and_print_messages(msgs: List[Message], partition: int | None) -> None:
+def deserialise_and_print_messages(msgs: List[Message], partition: int | None, filter: list[str] | None) -> None:
     for msg in msgs:
         try:
             if msg is None:
@@ -42,6 +42,9 @@ def deserialise_and_print_messages(msgs: List[Message], partition: int | None) -
             if partition is not None and msg.partition() != partition:
                 continue
             schema, deserialised = _try_to_deserialise_message(msg.value())
+            if filter is not None and schema not in filter:
+                # ignore
+                break
             time = _parse_timestamp(msg)
             logger.info(f"{msg.offset()} ({time}):({schema}) {deserialised}")
         except Exception as e:
