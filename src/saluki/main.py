@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 _LISTEN = "listen"
 _CONSUME = "consume"
+_REPLAY = "replay"
 
 
 def main() -> None:
@@ -66,6 +67,8 @@ def main() -> None:
     consumer_mode_parser.add_argument("-s", "--schema", required=False, default="auto", type=str)
     consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
     consumer_mode_parser.add_argument("-p", "--partition", required=False, type=int, default=0)
+    # TODO make this allow multiple comma-split args
+    consumer_mode_parser.add_argument("-f", "--filter", required=False, type=str, nargs='+')
 
     listen_parser = sub_parsers.add_parser(
         _LISTEN,
@@ -73,6 +76,29 @@ def main() -> None:
         parents=[parent_parser, consumer_parser],
     )
     listen_parser.add_argument("-p", "--partition", required=False, type=int, default=None)
+    # TODO make filtering work for this as well
+
+    #### NEW FEATURES HERE PLZ
+    # replay from, to offset
+    # saluki replay -o FROMOFFSET TOOFFSET srcbroker/srctopic destbroker/desttopic
+
+    # replay from, to timestamp
+    # saluki replay -t FROMTIMESTAMP TOTIMESTAMP srcbroker/srctopic destbroker/desttopic
+
+    # saluki consume x messages of y schema
+    # saluki consume -f pl72 mybroker:9092/XXX_runInfo -m 10 # get the last pl72 run starts
+
+    # saluki consume x messages of y or z schema
+    # saluki consume -f pl72,6s4t mybroker:9092/XXX_runInfo -m 10 # get the last pl72 run starts or 6s4t run stops
+
+    replay_parser = sub_parsers.add_parser(
+        _REPLAY,
+        help="replay mode - replay data into another topic",
+        parents=[parent_parser],
+    )
+    replay_parser.add_argument("-o", "--offset", help="replay between offsets", type=bool, required=False, default="store_false")
+    replay_parser.add_argument("-t", "--timestamp", help="replay between timestamps", type=bool, required=False)
+
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -98,7 +124,8 @@ def main() -> None:
             args.offset,
             args.go_forwards,
         )
-
+    elif args.command == _REPLAY:
+        pass
 
 if __name__ == "__main__":
     main()
