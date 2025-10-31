@@ -3,8 +3,6 @@ on: push
 jobs:
   lint-and-test: 
     if: github.ref_type == 'tag'
-    permissions:
-      contents: read
     name: Run linter and tests
     uses: ./.github/workflows/Lint-and-test.yml
   build: 
