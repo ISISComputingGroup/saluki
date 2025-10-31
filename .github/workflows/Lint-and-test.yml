@@ -10,11 +10,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-permissions:
-  actions: read
-  contents: read
-  security-events: write
-
 jobs:
   call-workflow:
     uses: ISISComputingGroup/reusable-workflows/.github/workflows/linters.yml@main
