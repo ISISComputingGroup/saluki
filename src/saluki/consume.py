@@ -29,7 +29,7 @@ def consume(
     c = Consumer(
         {
             "bootstrap.servers": broker,
-            "group.id": "saluki",
+            "group.id": "saluki-consume",
             "session.timeout.ms": 6000,
             "auto.offset.reset": "latest",
             "enable.auto.offset.store": False,
