@@ -4,6 +4,7 @@ import sys
 
 from saluki.consume import consume
 from saluki.listen import listen
+from saluki.sniff import sniff
 from saluki.utils import parse_kafka_uri
 
 logger = logging.getLogger("saluki")
@@ -22,26 +23,19 @@ def main() -> None:
         description="serialise/de-serialise flatbuffers and consume/produce from/to kafka",
     )
 
-    parent_parser = argparse.ArgumentParser(add_help=False)
+    topic_parser = argparse.ArgumentParser(add_help=False)
     #TODO this needs restructuring. consider having a topic_parser with partition options etc. 
     # because -m and -g does not make sense for saluki listen. 
-    parent_parser.add_argument("topic", type=str, help="Kafka topic. format is broker<:port>/topic")
+    topic_parser.add_argument("topic", type=str, help="Kafka topic. format is broker<:port>/topic")
 
-    parent_parser.add_argument(
+    topic_parser.add_argument(
         "-X",
         "--kafka-config",
         help="kafka options to pass through to librdkafka",
         required=False,
         default=None,
     )
-    parent_parser.add_argument(
-        "-l",
-        "--log-file",
-        help="filename to output all data to",
-        required=False,
-        default=None,
-        type=argparse.FileType("a"),
-    )
+    topic_parser.add_argument("-p", "--partition", required=False, type=int, default=0)
 
     sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")
 
@@ -58,7 +52,7 @@ def main() -> None:
     )
 
     consumer_mode_parser = sub_parsers.add_parser(
-        _CONSUME, help="consumer mode", parents=[parent_parser, consumer_parser]
+        _CONSUME, help="consumer mode", parents=[topic_parser, consumer_parser]
     )
     consumer_mode_parser.add_argument(
         "-m",
@@ -71,17 +65,14 @@ def main() -> None:
     consumer_mode_parser.add_argument(
         "-o", "--offset", help="offset to consume from", type=int, required=False
     )
-    consumer_mode_parser.add_argument("-s", "--schema", required=False, default="auto", type=str)
     consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
-    consumer_mode_parser.add_argument("-p", "--partition", required=False, type=int, default=0)
     consumer_mode_parser.add_argument("-f", "--filter", required=False, action="append")
 
-    listen_parser = sub_parsers.add_parser(
+    listen_parser = sub_parsers.add_parser( # noqa: F841
         _LISTEN,
         help="listen mode - listen until KeyboardInterrupt",
-        parents=[parent_parser, consumer_parser],
+        parents=[topic_parser, consumer_parser],
     )
-    listen_parser.add_argument("-p", "--partition", required=False, type=int, default=None)
 
     #### NEW FEATURES HERE PLZ
     # replay from, to offset
@@ -108,7 +99,7 @@ def main() -> None:
     play_parser = sub_parsers.add_parser(
         _PLAY,
         help="replay mode - replay data into another topic",
-        parents=[parent_parser],
+        parents=[topic_parser],
     )
     play_parser.add_argument("-o", "--offset", help="offsets to replay between (inclusive)", type=int, nargs=2)
     play_parser.add_argument("-t", "--timestamp", help="timestamps to replay between", type=str, nargs=2)
@@ -119,17 +110,14 @@ def main() -> None:
         sys.exit(1)
     args = parser.parse_args()
 
-    if args.kafka_config is not None:
+    if 'kafka_config' in args and args.kafka_config is not None:
         raise NotImplementedError("-X is not implemented yet.")
 
-    broker, topic = parse_kafka_uri(args.topic)
-
-    if args.log_file:
-        logger.addHandler(logging.FileHandler(args.log_file.name))
-
     if args.command == _LISTEN:
+        broker, topic = parse_kafka_uri(args.topic)
         listen(broker, topic, args.partition, args.filter)
     elif args.command == _CONSUME:
+        broker, topic = parse_kafka_uri(args.topic)
         consume(
             broker,
             topic,
@@ -142,8 +130,7 @@ def main() -> None:
         pass
         #play(src_broker, src_topic, dest_broker, dest_topic, args.offset, args.timestamp)
     elif args.command == _SNIFF:
-        print(args.broker)
-        pass
+        sniff(args.broker)
     elif args.command == _BURY:
         pass
     elif args.command == _DIG:
