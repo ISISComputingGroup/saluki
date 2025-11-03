@@ -23,7 +23,9 @@ def _try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]
     def fallback_deserialiser(payload: bytes) -> str:
         return payload.decode()
 
-    deserialiser = DESERIALISERS.get(schema if schema is not None else "", fallback_deserialiser)
+    deserialiser = DESERIALISERS.get(
+        schema if schema is not None else "", fallback_deserialiser
+    )
     logger.debug(f"Deserialiser: {deserialiser}")
 
     ret = deserialiser(payload)
@@ -31,7 +33,9 @@ def _try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]
     return schema, ret
 
 
-def deserialise_and_print_messages(msgs: List[Message], partition: int | None, filter: list[str] | None) -> None:
+def deserialise_and_print_messages(
+    msgs: List[Message], partition: int | None, schemas_to_filter_out: list[str] | None
+) -> None:
     for msg in msgs:
         try:
             if msg is None:
@@ -42,8 +46,7 @@ def deserialise_and_print_messages(msgs: List[Message], partition: int | None, f
             if partition is not None and msg.partition() != partition:
                 continue
             schema, deserialised = _try_to_deserialise_message(msg.value())
-            if filter is not None and schema not in filter:
-                # ignore
+            if schemas_to_filter_out is not None and schema in schemas_to_filter_out:
                 break
             time = _parse_timestamp(msg)
             logger.info(f"{msg.offset()} ({time}):({schema}) {deserialised}")

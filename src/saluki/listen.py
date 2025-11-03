@@ -7,7 +7,12 @@ from saluki.utils import deserialise_and_print_messages
 logger = logging.getLogger("saluki")
 
 
-def listen(broker: str, topic: str, partition: int | None = None, filter: list[str] | None = None) -> None:
+def listen(
+    broker: str,
+    topic: str,
+    partition: int | None = None,
+    schemas_to_filter_out: list[str] | None = None,
+) -> None:
     """
     Listen to a topic and deserialise each message
     :param broker: the broker address, including the port
@@ -30,7 +35,9 @@ def listen(broker: str, topic: str, partition: int | None = None, filter: list[s
         logger.info(f"listening to {broker}/{topic}")
         while True:
             msg = c.poll(1.0)
-            deserialise_and_print_messages([msg], partition)
+            deserialise_and_print_messages(
+                [msg], partition, schemas_to_filter_out=schemas_to_filter_out
+            )
     except KeyboardInterrupt:
         logger.debug("finished listening")
     finally:
