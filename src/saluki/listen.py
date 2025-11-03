@@ -23,7 +23,7 @@ def listen(
     c = Consumer(
         {
             "bootstrap.servers": broker,
-            "group.id": "saluki",
+            "group.id": "saluki-listen",
             "auto.offset.reset": "latest",
             "enable.auto.commit": False,
         }
