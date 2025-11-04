@@ -20,9 +20,7 @@ See `saluki --help` for all options.
 
 Use the `-g` flag to go the other way, ie. in the above example to consume the 9 messages _after_ offset 123456
 
-### Consume X of a certain schema(s)
-
-TODO
+You can also filter out messages to specific schema(s) with the `-f` flag, like the example above for `listen`.
 
 ## `sniff` - List all topics and their high, low watermarks and number of messages
 `saluki sniff mybroker:9092`

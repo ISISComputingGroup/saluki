@@ -11,13 +11,14 @@ def listen(
     broker: str,
     topic: str,
     partition: int | None = None,
-    schemas_to_filter_out: list[str] | None = None,
+    schemas_to_filter_to: list[str] | None = None,
 ) -> None:
     """
     Listen to a topic and deserialise each message
     :param broker: the broker address, including the port
     :param topic: the topic to use
     :param partition: the partition to listen to (default is all partitions in a given topic)
+    :param schemas_to_filter_to: schemas to filter when listening to messages
     :return: None
     """
     c = Consumer(
@@ -36,7 +37,7 @@ def listen(
         while True:
             msg = c.poll(1.0)
             deserialise_and_print_messages(
-                [msg], partition, schemas_to_filter_out=schemas_to_filter_out
+                [msg], partition, schemas_to_filter_to=schemas_to_filter_to
             )
     except KeyboardInterrupt:
         logger.debug("finished listening")

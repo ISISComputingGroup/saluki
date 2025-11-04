@@ -72,13 +72,6 @@ def main() -> None:
         parents=[topic_parser, consumer_parser],
     )
 
-    #### NEW FEATURES HERE PLZ
-    # saluki consume x messages of y schema
-    # saluki consume -f pl72 mybroker:9092/XXX_runInfo -m 10 # get the last pl72 run starts
-
-    # saluki consume x messages of y or z schema
-    # saluki consume -f pl72,6s4t mybroker:9092/XXX_runInfo -m 10 # get the last pl72 run starts or 6s4t run stops#
-
     play_parser = sub_parsers.add_parser(
         _PLAY,
         help="replay mode - replay data into another topic",
@@ -111,12 +104,7 @@ def main() -> None:
     elif args.command == _CONSUME:
         broker, topic = parse_kafka_uri(args.topic)
         consume(
-            broker,
-            topic,
-            args.partition,
-            args.messages,
-            args.offset,
-            args.go_forwards,
+            broker, topic, args.partition, args.messages, args.offset, args.go_forwards, args.filter
         )
     elif args.command == _PLAY:
         src_broker, src_topic = parse_kafka_uri(args.topics[0])

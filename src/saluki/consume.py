@@ -14,6 +14,7 @@ def consume(
     num_messages: int = 1,
     offset: int | None = None,
     go_forwards: bool = False,
+    schemas_to_filter_to: list[str] | None = None,
 ) -> None:
     """
     consume from a topic and deserialise each message
@@ -24,6 +25,7 @@ def consume(
     :param num_messages: number of messages to consume
     :param offset: offset to consume from/to
     :param go_forwards: whether to consume forwards or backwards
+    :param schemas_to_filter_to: schemas in messages to filter to
     :return: None
     """
     c = Consumer(
@@ -57,7 +59,7 @@ def consume(
     try:
         logger.info(f"Consuming {num_messages} messages")
         msgs = c.consume(num_messages)
-        deserialise_and_print_messages(msgs, partition)
+        deserialise_and_print_messages(msgs, partition, schemas_to_filter_to)
     except Exception:
         logger.exception("Got exception while consuming:")
     finally:
