@@ -1,4 +1,5 @@
 import logging
+
 from confluent_kafka import Consumer, Producer, TopicPartition
 
 logger = logging.getLogger("saluki")
@@ -14,7 +15,7 @@ def play(
 ) -> None:
     """
     Replay data from src_topic to dest_topic between the offsets OR timestamps specified.
-    This currently assumes contiguous data in a topic (ie. no log compaction) and only uses partition 0.
+    This currently assumes contiguous data in a topic (ie. no log compaction) and uses partition 0.
 
     :param src_broker: The source broker, including port.
     :param src_topic: The topic to replay data from.
@@ -23,8 +24,6 @@ def play(
     :param offsets: The start and finish offsets to replay data from.
     :param timestamps: The start and finish timestamps to replay data from.
     """
-
-    print(f"ARGS: {src_broker}, {src_topic}, {dest_broker}, {dest_topic}, {offsets}, {timestamps}")
 
     consumer = Consumer(
         {
@@ -40,10 +39,12 @@ def play(
     src_partition = 0
 
     if timestamps is not None:
-        start_offset, stop_offset = consumer.offsets_for_times([
-            TopicPartition(src_topic, src_partition, timestamps[0]),
-            TopicPartition(src_topic, src_partition, timestamps[1]),
-        ])
+        start_offset, stop_offset = consumer.offsets_for_times(
+            [
+                TopicPartition(src_topic, src_partition, timestamps[0]),
+                TopicPartition(src_topic, src_partition, timestamps[1]),
+            ]
+        )
     else:
         start_offset = TopicPartition(src_topic, src_partition, offsets[0])
         stop_offset = TopicPartition(src_topic, src_partition, offsets[1])
@@ -60,4 +61,3 @@ def play(
     finally:
         logger.debug(f"Closing consumer {consumer}")
         consumer.close()
-

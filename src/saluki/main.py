@@ -15,8 +15,6 @@ _LISTEN = "listen"
 _CONSUME = "consume"
 _PLAY = "play"
 _SNIFF = "sniff"
-_BURY = "bury"
-_DIG = "dig"
 
 
 def main() -> None:
@@ -26,9 +24,7 @@ def main() -> None:
     )
 
     topic_parser = argparse.ArgumentParser(add_help=False)
-    topic_parser.add_argument(
-        "topic", type=str, help="Kafka topic. format is broker<:port>/topic"
-    )
+    topic_parser.add_argument("topic", type=str, help="Kafka topic. format is broker<:port>/topic")
 
     topic_parser.add_argument(
         "-X",
@@ -40,9 +36,7 @@ def main() -> None:
     topic_parser.add_argument("-p", "--partition", required=False, type=int, default=0)
     topic_parser.add_argument("-f", "--filter", required=False, action="append")
 
-    sub_parsers = parser.add_subparsers(
-        help="sub-command help", required=True, dest="command"
-    )
+    sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")
 
     sniff_parser = sub_parsers.add_parser(_SNIFF, help="sniff - broker metadata")
     sniff_parser.add_argument("broker", type=str)
@@ -70,9 +64,7 @@ def main() -> None:
     consumer_mode_parser.add_argument(
         "-o", "--offset", help="offset to consume from", type=int, required=False
     )
-    consumer_mode_parser.add_argument(
-        "-g", "--go-forwards", required=False, action="store_true"
-    )
+    consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
 
     listen_parser = sub_parsers.add_parser(  # noqa: F841
         _LISTEN,
@@ -81,12 +73,6 @@ def main() -> None:
     )
 
     #### NEW FEATURES HERE PLZ
-    # replay from, to offset
-    # saluki play -o FROMOFFSET TOOFFSET srcbroker/srctopic destbroker/desttopic
-
-    # replay from, to timestamp
-    # saluki play -t FROMTIMESTAMP TOTIMESTAMP srcbroker/srctopic destbroker/desttopic
-
     # saluki consume x messages of y schema
     # saluki consume -f pl72 mybroker:9092/XXX_runInfo -m 10 # get the last pl72 run starts
 
@@ -108,7 +94,7 @@ def main() -> None:
         nargs=2,
     )
     g.add_argument(
-        "-t", "--timestamps", help="timestamps to replay between", type=str, nargs=2
+        "-t", "--timestamps", help="unix timestamps to replay between", type=str, nargs=2
     )
 
     if len(sys.argv) == 1:
@@ -136,34 +122,16 @@ def main() -> None:
         src_broker, src_topic = parse_kafka_uri(args.topics[0])
         dest_broker, dest_topic = parse_kafka_uri(args.topics[1])
 
-        print(
-            f"SOURCE BROKER: {src_broker}, SOURCE TOPIC: {src_topic}, DEST BROKER: {dest_broker}, DEST TOPIC: {dest_topic} "
+        play(
+            src_broker,
+            src_topic,
+            dest_broker,
+            dest_topic,
+            args.offsets,
+            args.timestamps,
         )
-        if args.offsets is not None:
-            print(
-                f"Replaying {src_broker}/{src_topic} between offsets {args.offsets[0]} and {args.offsets[1]} to {dest_broker}/{dest_topic}"
-            )
-        elif args.timestamps is not None:
-            print(
-                f"Replaying {src_broker}/{src_topic} between timestamps {args.timestamps[0]} and {args.timestamps[1]} to {dest_broker}/{dest_topic}"
-            )
-
-        if input("OK? (y/n)").lower() == "y":
-            play(
-                src_broker,
-                src_topic,
-                dest_broker,
-                dest_topic,
-                args.offsets,
-                args.timestamps,
-            )
-            print("replayed")
     elif args.command == _SNIFF:
         sniff(args.broker)
-    elif args.command == _BURY:
-        pass
-    elif args.command == _DIG:
-        pass
 
 
 if __name__ == "__main__":

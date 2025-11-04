@@ -47,9 +47,7 @@ def consume(
             start = offset - num_messages + 1
         else:
             start = (
-                c.get_watermark_offsets(TopicPartition(topic, partition), cached=False)[
-                    1
-                ]
+                c.get_watermark_offsets(TopicPartition(topic, partition), cached=False)[1]
                 - num_messages
             )
 

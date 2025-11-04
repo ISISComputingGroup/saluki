@@ -31,15 +31,15 @@ TODO
 
 ### Between offsets
 
-TODO
+`saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -o 123 125` - This will forward messages at offset 123, 124 and 125 in the `source_topic` to the `dest_topic`
 
 ### Between timestamps 
 
-TODO
+`saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -t 1762209990 1762209992` - This will forward messages between the two given timestamps.
 
 # Install 
 `pip install saluki`
 
 ## Developer setup 
-`pip install .[dev]`
+`pip install -e .[dev]`
 
