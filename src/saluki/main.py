@@ -22,6 +22,14 @@ def main() -> None:
         prog="saluki",
         description="serialise/de-serialise flatbuffers and consume/produce from/to kafka",
     )
+    parser.add_argument(
+        "-l",
+        "--log-file",
+        help="filename to output all data to",
+        required=False,
+        default=None,
+        type=argparse.FileType("a"),
+    )
 
     topic_parser = argparse.ArgumentParser(add_help=False)
     topic_parser.add_argument("topic", type=str, help="Kafka topic. format is broker<:port>/topic")
@@ -94,6 +102,9 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
     args = parser.parse_args()
+
+    if args.log_file:
+        logger.addHandler(logging.FileHandler(args.log_file.name))
 
     if "kafka_config" in args and args.kafka_config is not None:
         raise NotImplementedError("-X is not implemented yet.")
