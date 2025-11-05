@@ -6,7 +6,7 @@ from streaming_data_types import serialise_f144
 from streaming_data_types.forwarder_config_update_fc00 import (
     ConfigurationUpdate,
     StreamInfo,
-    serialise_fc00
+    serialise_fc00,
 )
 
 from saluki.utils import (
@@ -87,7 +87,9 @@ def test_deserialising_with_schema_list_ignores_messages_with_schema_not_in_list
         mock_message.error.return_value = False
         mock_message.timestamp.return_value = 2, 1
 
-        deserialise_and_print_messages([mock_message, ok_message], None, schemas_to_filter_to=["fc00"])
+        deserialise_and_print_messages(
+            [mock_message, ok_message], None, schemas_to_filter_to=["fc00"]
+        )
         assert logger.info.call_count == 1
 
 
