@@ -22,4 +22,4 @@ def sniff(broker: str) -> None:
         for p in partitions:
             tp = TopicPartition(k, p)
             low, high = c.get_watermark_offsets(tp)
-            logger.info(f"\t\tlow:{low}, high:{high}, num_messages:{high - low}")
+            logger.info(f"\t\t{tp.partition} - low:{low}, high:{high}, num_messages:{high - low}")
