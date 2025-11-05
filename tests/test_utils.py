@@ -2,9 +2,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 from confluent_kafka import Message
+from streaming_data_types import serialise_f144
 from streaming_data_types.forwarder_config_update_fc00 import (
     ConfigurationUpdate,
     StreamInfo,
+    serialise_fc00
 )
 
 from saluki.utils import (
@@ -71,6 +73,21 @@ def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
         mock_message.timestamp.return_value = 2, 1
 
         deserialise_and_print_messages([mock_message, ok_message], None)
+        assert logger.info.call_count == 1
+
+
+def test_deserialising_with_schema_list_ignores_messages_with_schema_not_in_list(mock_message):
+    with patch("saluki.utils.logger") as logger:
+        ok_message = Mock(spec=Message)
+        ok_message.value.return_value = serialise_fc00(config_change=1, streams=[])
+        ok_message.error.return_value = False
+        ok_message.timestamp.return_value = 2, 1
+
+        mock_message.value.return_value = serialise_f144(source_name="test", value=123)
+        mock_message.error.return_value = False
+        mock_message.timestamp.return_value = 2, 1
+
+        deserialise_and_print_messages([mock_message, ok_message], None, schemas_to_filter_to=["fc00"])
         assert logger.info.call_count == 1
 
 

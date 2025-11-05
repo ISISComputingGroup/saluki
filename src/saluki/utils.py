@@ -44,8 +44,8 @@ def deserialise_and_print_messages(
             if partition is not None and msg.partition() != partition:
                 continue
             schema, deserialised = _try_to_deserialise_message(msg.value())
-            if schemas_to_filter_to is not None and schema in schemas_to_filter_to:
-                break
+            if schemas_to_filter_to is not None and schema not in schemas_to_filter_to:
+                continue
             time = _parse_timestamp(msg)
             logger.info(f"{msg.offset()} ({time}):({schema}) {deserialised}")
         except Exception as e:
