@@ -51,13 +51,14 @@ def play(
     consumer.assign([start_offset])
 
     num_messages = stop_offset.offset - start_offset.offset + 1
+    msgs = []
 
     try:
         msgs = consumer.consume(num_messages)
         [producer.produce(dest_topic, message.value(), message.key()) for message in msgs]
         producer.flush()
     except Exception:
-        logger.exception("Got exception while consuming:")
+        logger.exception("Got exception while replaying:")
     finally:
         logger.debug(f"Closing consumer {consumer}")
         consumer.close()

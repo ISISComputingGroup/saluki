@@ -7,6 +7,10 @@ logger = logging.getLogger("saluki")
 
 
 def sniff(broker: str) -> None:
+    """
+    Prints the broker and topic metadata for a given broker.
+    :param broker: The broker address including port number.
+    """
     a = AdminClient({"bootstrap.servers": broker})
     c = Consumer({"bootstrap.servers": broker, "group.id": "saluki-sniff"})
     t = a.list_topics(timeout=5)
