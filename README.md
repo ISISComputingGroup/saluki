@@ -6,6 +6,9 @@ Deserialises [the ESS flatbuffers blobs](https://github.com/ess-dmsc/python-stre
 Also allows replaying data in a topic. 
 
 # Usage
+
+To run the latest version, use `uvx saluki <args>`.
+
 See `saluki --help` for all options. 
 
 ## `listen` - Listen to a topic for updates
@@ -35,9 +38,6 @@ You can also filter out messages to specific schema(s) with the `-f` flag, like 
 
 `saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -t 1762209990 1762209992` - This will forward messages between the two given timestamps.
 
-# Install 
-`pip install saluki`
-
-## Developer setup 
+# Developer setup 
 `pip install -e .[dev]`
 
