@@ -79,7 +79,7 @@ def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
 def test_deserialising_with_schema_list_ignores_messages_with_schema_not_in_list(mock_message):
     with patch("saluki.utils.logger") as logger:
         ok_message = Mock(spec=Message)
-        ok_message.value.return_value = serialise_fc00(config_change=1, streams=[])
+        ok_message.value.return_value = serialise_fc00(config_change=1, streams=[])  # type: ignore
         ok_message.error.return_value = False
         ok_message.timestamp.return_value = 2, 1
 

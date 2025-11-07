@@ -45,13 +45,15 @@ def play(
                 TopicPartition(src_topic, src_partition, timestamps[1]),
             ]
         )
-    else:
+    elif offsets is not None:
         start_offset = TopicPartition(src_topic, src_partition, offsets[0])
         stop_offset = TopicPartition(src_topic, src_partition, offsets[1])
+    else:
+        raise ValueError("offsets and timestamps cannot both be None")
+
     consumer.assign([start_offset])
 
     num_messages = stop_offset.offset - start_offset.offset + 1
-    msgs = []
 
     try:
         msgs = consumer.consume(num_messages)

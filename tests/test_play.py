@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+import pytest
 from confluent_kafka import Message, TopicPartition
 
 from saluki.play import play
@@ -95,3 +96,8 @@ def test_play_with_exception_when_consuming_consumer_still_closed():
         mock_logger.exception.assert_called_once()
 
         mock_consumer().close.assert_called_once()
+
+
+def test_play_raises_when_offsets_and_timestamps_are_none():
+    with pytest.raises(ValueError):
+        play("", "", "", "", None, None)

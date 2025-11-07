@@ -13,8 +13,8 @@ def test_sniff_with_two_partitions_in_a_topic():
     ):
         fake_cluster_md = ClusterMetadata()
         broker1 = BrokerMetadata()
-        broker1.id = "id1"
-        broker1.host = "mybroker"
+        broker1.id = "id1"  # type: ignore
+        broker1.host = "mybroker"  # type: ignore
         broker1.port = 9093
         fake_cluster_md.brokers = {0: broker1}
 
