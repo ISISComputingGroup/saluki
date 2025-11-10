@@ -7,7 +7,9 @@ Also allows replaying data in a topic.
 
 # Usage
 
-To run the latest version, use `uvx saluki <args>`.
+To run the latest version, install [uv](https://docs.astral.sh/uv/getting-started/installation/) and use `uvx saluki <args>`.
+
+alternatively you can `pip install saluki` and run it from a `venv`. 
 
 See `saluki --help` for all options. 
 
@@ -27,6 +29,25 @@ You can also filter out messages to specific schema(s) with the `-f` flag, like 
 
 ## `sniff` - List all topics and their high, low watermarks and number of messages
 `saluki sniff mybroker:9092`
+
+Output looks as follows:
+
+```
+$ saluki sniff mybroker:9092
+
+INFO:saluki:Cluster ID: redpanda.0faa4595-7298-407e-9db7-7e2758d1af1f
+INFO:saluki:Brokers:
+INFO:saluki:    192.168.0.111:9092/1
+INFO:saluki:    192.168.0.112:9092/2
+INFO:saluki:    192.168.0.113:9092/0
+INFO:saluki:Topics:
+INFO:saluki:    MERLIN_events:
+INFO:saluki:            0 - low:262322729, high:302663378, num_messages:40340649
+INFO:saluki:    MERLIN_runInfo:
+INFO:saluki:            0 - low:335, high:2516, num_messages:2181
+INFO:saluki:    MERLIN_monitorHistograms:
+INFO:saluki:            0 - low:7515, high:7551, num_messages:36
+```
 
 ## `play` - Replay data from one topic to another
 

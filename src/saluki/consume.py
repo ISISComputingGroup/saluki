@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from confluent_kafka import Consumer, TopicPartition
 
@@ -31,7 +32,7 @@ def consume(
     c = Consumer(
         {
             "bootstrap.servers": broker,
-            "group.id": "saluki-consume",
+            "group.id": f"saluki-consume-{uuid.uuid4()}",
             "session.timeout.ms": 6000,
             "auto.offset.reset": "latest",
             "enable.auto.offset.store": False,

@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from confluent_kafka import Consumer, Producer, TopicPartition
 
@@ -28,7 +29,7 @@ def play(
     consumer = Consumer(
         {
             "bootstrap.servers": src_broker,
-            "group.id": "saluki-play",
+            "group.id": f"saluki-play-{uuid.uuid4()}",
         }
     )
     producer = Producer(
@@ -57,7 +58,8 @@ def play(
 
     try:
         msgs = consumer.consume(num_messages)
-        [producer.produce(dest_topic, message.value(), message.key()) for message in msgs]
+        for message in msgs:
+            producer.produce(dest_topic, message.value(), message.key())
         producer.flush()
     except Exception:
         logger.exception("Got exception while replaying:")
