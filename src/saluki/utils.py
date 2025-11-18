@@ -79,8 +79,8 @@ def parse_kafka_uri(uri: str) -> Tuple[str, str]:
     If username is provided, a SASL mechanism must also be provided.
     Any other validation must be performed in the calling code.
     """
-    broker, topic = uri.split("/") if "/" in uri else (uri, "")
-    if not topic:
+    broker, topic = uri.split("/") if "/" in uri else (uri, None)
+    if topic is None:
         raise RuntimeError(
             f"Unable to parse URI {uri}, topic not defined. URI should be of form"
             f" broker[:port]/topic"

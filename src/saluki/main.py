@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from dateutil.parser import parse, ParserError
 from saluki.consume import consume
 from saluki.listen import listen
 from saluki.play import play
@@ -15,6 +16,16 @@ _LISTEN = "listen"
 _CONSUME = "consume"
 _PLAY = "play"
 _SNIFF = "sniff"
+
+
+def _dateutil_parsable_or_unix_timestamp(inp: str) -> float:
+    try:
+        try:
+            return parse(inp).timestamp()
+        except ParserError:
+            return float(inp)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"timestamp {inp} is not parsable by dateutil.parse() and is not a unix timestamp")
 
 
 def main() -> None:
@@ -47,7 +58,7 @@ def main() -> None:
     sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")
 
     sniff_parser = sub_parsers.add_parser(_SNIFF, help="sniff - broker metadata")
-    sniff_parser.add_argument("broker", type=str)
+    sniff_parser.add_argument("broker", type=str, help="broker, optionally suffixed with a topic name")
 
     consumer_parser = argparse.ArgumentParser(add_help=False)
     consumer_parser.add_argument(
@@ -94,9 +105,7 @@ def main() -> None:
         type=int,
         nargs=2,
     )
-    g.add_argument(
-        "-t", "--timestamps", help="unix timestamps to replay between", type=str, nargs=2
-    )
+    g.add_argument("-t", "--timestamps", help='timestamps to replay between in ISO8601 or RFC3339 format ie. "2025-11-17 07:00:00"  ', type=_dateutil_parsable_or_unix_timestamp, nargs=2)
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -130,7 +139,11 @@ def main() -> None:
             args.timestamps,
         )
     elif args.command == _SNIFF:
-        sniff(args.broker)
+        try:
+            broker, topic = parse_kafka_uri(args.broker)
+            sniff(broker, topic)
+        except RuntimeError:
+            sniff(args.broker)
 
 
 if __name__ == "__main__":
