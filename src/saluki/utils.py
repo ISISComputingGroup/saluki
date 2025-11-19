@@ -1,9 +1,11 @@
 import datetime
 import logging
+from argparse import ArgumentTypeError
 from typing import List, Tuple
 from zoneinfo import ZoneInfo
 
 from confluent_kafka import Message
+from dateutil.parser import parse, ParserError
 from streaming_data_types import DESERIALISERS
 from streaming_data_types.exceptions import ShortBufferException
 from streaming_data_types.utils import get_schema
@@ -47,7 +49,7 @@ def deserialise_and_print_messages(
             if schemas_to_filter_to is not None and schema not in schemas_to_filter_to:
                 continue
             time = _parse_timestamp(msg)
-            logger.info(f"{msg.offset()} ({time}):({schema}) {deserialised}")
+            logger.info(f"(o:{msg.offset()},t:{time},s:{schema}) {deserialised}")
         except Exception as e:
             logger.exception(f"Got error while deserialising: {e}")
 
@@ -89,3 +91,18 @@ def parse_kafka_uri(uri: str) -> Tuple[str, str]:
         broker,
         topic,
     )
+
+
+def dateutil_parsable_or_unix_timestamp(inp: str) -> int:
+    """
+    Parse a dateutil string, if this fails then try to parse a unix timestamp.
+    This returns a unix timestamp as an int
+    """
+    try:
+        try:
+            return int(round(parse(inp).timestamp() * 1000))
+        except ParserError:
+            logger.debug(f"Failed to parse {inp} as a dateutil parsable. Falling back to unix timestamp")
+            return int(inp)
+    except ValueError:
+        raise ArgumentTypeError(f"timestamp {inp} is not parsable by dateutil.parse() and is not a unix timestamp")
