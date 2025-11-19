@@ -13,8 +13,9 @@ from streaming_data_types.forwarder_config_update_fc00 import (
 from saluki.utils import (
     _parse_timestamp,
     _try_to_deserialise_message,
+    dateutil_parsable_or_unix_timestamp,
     deserialise_and_print_messages,
-    parse_kafka_uri, dateutil_parsable_or_unix_timestamp,
+    parse_kafka_uri,
 )
 
 
@@ -176,21 +177,21 @@ def test_uri_with_no_topic():
     with pytest.raises(RuntimeError):
         parse_kafka_uri(test_broker)
 
-@pytest.mark.parametrize("timestamp",
-["2025-11-19T15:27:11",
- "2025-11-19T15:27:11Z",
-"2025-11-19T15:27:11+00:00"
- ]
 
+@pytest.mark.parametrize(
+    "timestamp", ["2025-11-19T15:27:11", "2025-11-19T15:27:11Z", "2025-11-19T15:27:11+00:00"]
 )
 def test_parses_datetime_properly_with_string(timestamp):
     assert dateutil_parsable_or_unix_timestamp(timestamp) == 1763566031000
 
-@pytest.mark.parametrize("timestamp",
-["1763566031000",
- "1763566031",
- "1763566031000000",
- ]
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "1763566031000",
+        "1763566031",
+        "1763566031000000",
+    ],
 )
 def test_parses_datetime_properly_and_leaves_unix_timestamp_alone(timestamp):
     assert dateutil_parsable_or_unix_timestamp(timestamp) == int(timestamp)

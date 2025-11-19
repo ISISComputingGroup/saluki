@@ -39,8 +39,8 @@ def test_play_with_offsets():
         p_obj = p()
         produce_batch_call = p_obj.produce_batch.call_args.args
         assert dest_topic == produce_batch_call[0]
-        assert {'key': message_1_key, 'value': message_1_val} in produce_batch_call[1]
-        assert {'key': message_2_key, 'value': message_2_val} in produce_batch_call[1]
+        assert {"key": message_1_key, "value": message_1_val} in produce_batch_call[1]
+        assert {"key": message_2_key, "value": message_2_val} in produce_batch_call[1]
 
 
 def test_play_with_timestamps():
@@ -66,7 +66,7 @@ def test_play_with_timestamps():
         consumer_obj = c()
         consumer_obj.offsets_for_times.side_effect = [
             [TopicPartition(src_topic, partition=0, offset=2)],
-            [TopicPartition(src_topic, partition=0, offset=3)]
+            [TopicPartition(src_topic, partition=0, offset=3)],
         ]
         consumer_obj.consume.return_value = [message_1, message_2]
 
@@ -80,8 +80,8 @@ def test_play_with_timestamps():
         p_obj = p()
         produce_batch_call = p_obj.produce_batch.call_args.args
         assert dest_topic == produce_batch_call[0]
-        assert {'key': message_1_key, 'value': message_1_val} in produce_batch_call[1]
-        assert {'key': message_2_key, 'value': message_2_val} in produce_batch_call[1]
+        assert {"key": message_1_key, "value": message_1_val} in produce_batch_call[1]
+        assert {"key": message_2_key, "value": message_2_val} in produce_batch_call[1]
 
 
 def test_play_with_exception_when_consuming_consumer_still_closed():
