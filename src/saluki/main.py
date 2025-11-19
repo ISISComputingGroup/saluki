@@ -6,7 +6,7 @@ from saluki.consume import consume
 from saluki.listen import listen
 from saluki.play import play
 from saluki.sniff import sniff
-from saluki.utils import parse_kafka_uri, dateutil_parsable_or_unix_timestamp
+from saluki.utils import dateutil_parsable_or_unix_timestamp, parse_kafka_uri
 
 logger = logging.getLogger("saluki")
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +23,7 @@ def main() -> None:
         description="serialise/de-serialise flatbuffers and consume/produce from/to kafka",
     )
     common_options = argparse.ArgumentParser(add_help=False)
-    common_options.add_argument("-v", "--verbose", help="show DEBUG logs", action='store_true')
+    common_options.add_argument("-v", "--verbose", help="show DEBUG logs", action="store_true")
     common_options.add_argument(
         "-l",
         "--log-file",
@@ -48,8 +48,12 @@ def main() -> None:
 
     sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")
 
-    sniff_parser = sub_parsers.add_parser(_SNIFF, help="sniff - broker metadata", parents=[common_options])
-    sniff_parser.add_argument("broker", type=str, help="broker, optionally suffixed with a topic name to filter to")
+    sniff_parser = sub_parsers.add_parser(
+        _SNIFF, help="sniff - broker metadata", parents=[common_options]
+    )
+    sniff_parser.add_argument(
+        "broker", type=str, help="broker, optionally suffixed with a topic name to filter to"
+    )
 
     consumer_parser = argparse.ArgumentParser(add_help=False)
     consumer_parser.add_argument(
@@ -75,9 +79,17 @@ def main() -> None:
     consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
     cg = consumer_mode_parser.add_mutually_exclusive_group(required=False)
     cg.add_argument(
-        "-o", "--offset", help="offset to consume from", type=int,
+        "-o",
+        "--offset",
+        help="offset to consume from",
+        type=int,
     )
-    cg.add_argument("-t", "--timestamp", help="timestamp to consume from", type=dateutil_parsable_or_unix_timestamp)
+    cg.add_argument(
+        "-t",
+        "--timestamp",
+        help="timestamp to consume from",
+        type=dateutil_parsable_or_unix_timestamp,
+    )
 
     listen_parser = sub_parsers.add_parser(  # noqa: F841
         _LISTEN,
@@ -99,7 +111,14 @@ def main() -> None:
         type=int,
         nargs=2,
     )
-    g.add_argument("-t", "--timestamps", help='timestamps to replay between in ISO8601 or RFC3339 format ie. "2025-11-17 07:00:00 or as a unix timestamp"  ', type=dateutil_parsable_or_unix_timestamp, nargs=2)
+    g.add_argument(
+        "-t",
+        "--timestamps",
+        help="timestamps to replay between in ISO8601 or RFC3339 format ie."
+        ' "2025-11-17 07:00:00 or as a unix timestamp"  ',
+        type=dateutil_parsable_or_unix_timestamp,
+        nargs=2,
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -121,7 +140,14 @@ def main() -> None:
     elif args.command == _CONSUME:
         broker, topic = parse_kafka_uri(args.topic)
         consume(
-            broker, topic, args.partition, args.messages, args.offset, args.go_forwards, args.filter, args.timestamp
+            broker,
+            topic,
+            args.partition,
+            args.messages,
+            args.offset,
+            args.go_forwards,
+            args.filter,
+            args.timestamp,
         )
     elif args.command == _PLAY:
         src_broker, src_topic = parse_kafka_uri(args.topics[0])

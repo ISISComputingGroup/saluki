@@ -5,7 +5,7 @@ from typing import List, Tuple
 from zoneinfo import ZoneInfo
 
 from confluent_kafka import Message
-from dateutil.parser import parse, ParserError
+from dateutil.parser import ParserError, parse
 from streaming_data_types import DESERIALISERS
 from streaming_data_types.exceptions import ShortBufferException
 from streaming_data_types.utils import get_schema
@@ -102,7 +102,11 @@ def dateutil_parsable_or_unix_timestamp(inp: str) -> int:
         try:
             return int(round(parse(inp).timestamp() * 1000))
         except (ParserError, OverflowError):
-            logger.debug(f"Failed to parse {inp} as a dateutil parsable. Falling back to unix timestamp")
+            logger.debug(
+                f"Failed to parse {inp} as a dateutil parsable. Falling back to unix timestamp"
+            )
             return int(inp)
     except ValueError:
-        raise ArgumentTypeError(f"timestamp {inp} is not parsable by dateutil.parse() and is not a unix timestamp")
+        raise ArgumentTypeError(
+            f"timestamp {inp} is not parsable by dateutil.parse() and is not a unix timestamp"
+        )

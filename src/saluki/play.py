@@ -1,5 +1,6 @@
 import logging
 import uuid
+
 from confluent_kafka import Consumer, Producer, TopicPartition
 
 logger = logging.getLogger("saluki")
@@ -44,11 +45,13 @@ def play(
         start_offset = consumer.offsets_for_times(
             [
                 TopicPartition(src_topic, src_partition, timestamps[0]),
-
             ]
         )[0]
-        # See https://github.com/confluentinc/confluent-kafka-python/issues/1178 as to why offsets_for_times is called twice.
-        stop_offset = consumer.offsets_for_times([TopicPartition(src_topic, src_partition, timestamps[1])])[0]
+        # See https://github.com/confluentinc/confluent-kafka-python/issues/1178
+        # as to why offsets_for_times is called twice.
+        stop_offset = consumer.offsets_for_times(
+            [TopicPartition(src_topic, src_partition, timestamps[1])]
+        )[0]
     elif offsets is not None:
         start_offset = TopicPartition(src_topic, src_partition, offsets[0])
         stop_offset = TopicPartition(src_topic, src_partition, offsets[1])
@@ -66,7 +69,9 @@ def play(
         msgs = consumer.consume(num_messages)
         logger.debug(f"finished consuming {num_messages} messages")
         consumer.close()
-        producer.produce_batch(dest_topic, [{'key': message.key(), 'value': message.value()} for message in msgs])
+        producer.produce_batch(
+            dest_topic, [{"key": message.key(), "value": message.value()} for message in msgs]
+        )
         logger.debug(f"flushing producer. len(p): {len(producer)}")
         producer.flush(timeout=10)
 
