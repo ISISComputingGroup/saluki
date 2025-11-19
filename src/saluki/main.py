@@ -71,10 +71,13 @@ def main() -> None:
         required=False,
         default=1,
     )
-    consumer_mode_parser.add_argument(
-        "-o", "--offset", help="offset to consume from", type=int, required=False
-    )
+
     consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
+    cg = consumer_mode_parser.add_mutually_exclusive_group(required=False)
+    cg.add_argument(
+        "-o", "--offset", help="offset to consume from", type=int,
+    )
+    cg.add_argument("-t", "--timestamp", help="timestamp to consume from", type=dateutil_parsable_or_unix_timestamp)
 
     listen_parser = sub_parsers.add_parser(  # noqa: F841
         _LISTEN,
@@ -118,7 +121,7 @@ def main() -> None:
     elif args.command == _CONSUME:
         broker, topic = parse_kafka_uri(args.topic)
         consume(
-            broker, topic, args.partition, args.messages, args.offset, args.go_forwards, args.filter
+            broker, topic, args.partition, args.messages, args.offset, args.go_forwards, args.filter, args.timestamp
         )
     elif args.command == _PLAY:
         src_broker, src_topic = parse_kafka_uri(args.topics[0])

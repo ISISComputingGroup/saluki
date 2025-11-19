@@ -7,7 +7,7 @@ name = "saluki"
 dynamic = ["version"]
 dependencies = [
     "ess-streaming-data-types",
-    "confluent-kafka",
+    "confluent-kafka>=2.12.1", # for produce_batch in play()
     "python-dateutil",
     "tzdata"
 ]

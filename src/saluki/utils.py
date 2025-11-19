@@ -101,7 +101,7 @@ def dateutil_parsable_or_unix_timestamp(inp: str) -> int:
     try:
         try:
             return int(round(parse(inp).timestamp() * 1000))
-        except ParserError:
+        except (ParserError, OverflowError):
             logger.debug(f"Failed to parse {inp} as a dateutil parsable. Falling back to unix timestamp")
             return int(inp)
     except ValueError:

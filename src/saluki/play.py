@@ -1,6 +1,5 @@
 import logging
 import uuid
-from time import sleep
 from confluent_kafka import Consumer, Producer, TopicPartition
 
 logger = logging.getLogger("saluki")
@@ -17,6 +16,7 @@ def play(
     """
     Replay data from src_topic to dest_topic between the offsets OR timestamps specified.
     This currently assumes contiguous data in a topic (ie. no log compaction) and uses partition 0.
+    It also does not copy message timestamps.
 
     :param src_broker: The source broker, including port.
     :param src_topic: The topic to replay data from.
@@ -62,27 +62,12 @@ def play(
 
     num_messages = stop_offset.offset - start_offset.offset + 1
 
-    def delivery_report(err, msg):
-        """ Called once for each message produced to indicate delivery result.
-            Triggered by poll() or flush()."""
-        if err is not None:
-            logger.error('Message delivery failed: {}'.format(err))
-        else:
-            logger.debug('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
-
     try:
         msgs = consumer.consume(num_messages)
         logger.debug(f"finished consuming {num_messages} messages")
         consumer.close()
-        # logger.debug(f"{msgs}")
-        for message in msgs:
-            producer.poll(0)
-            producer.produce(dest_topic, message.value(), message.key(), callback=delivery_report)
-        # producer.produce_batch(dest_topic, [{'key': message.key(), 'value': message.value()} for message in msgs])
-        # producer.poll()
+        producer.produce_batch(dest_topic, [{'key': message.key(), 'value': message.value()} for message in msgs])
         logger.debug(f"flushing producer. len(p): {len(producer)}")
-        # while len(producer): producer.flush()
-
         producer.flush(timeout=10)
 
         logger.debug(f"length after flushing: {len(producer)}")
