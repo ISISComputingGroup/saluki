@@ -1,15 +1,19 @@
+from argparse import ArgumentTypeError
 from unittest.mock import Mock, patch
 
 import pytest
 from confluent_kafka import Message
+from streaming_data_types import serialise_f144
 from streaming_data_types.forwarder_config_update_fc00 import (
     ConfigurationUpdate,
     StreamInfo,
+    serialise_fc00,
 )
 
 from saluki.utils import (
     _parse_timestamp,
     _try_to_deserialise_message,
+    dateutil_parsable_or_unix_timestamp,
     deserialise_and_print_messages,
     parse_kafka_uri,
 )
@@ -71,6 +75,23 @@ def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
         mock_message.timestamp.return_value = 2, 1
 
         deserialise_and_print_messages([mock_message, ok_message], None)
+        assert logger.info.call_count == 1
+
+
+def test_deserialising_with_schema_list_ignores_messages_with_schema_not_in_list(mock_message):
+    with patch("saluki.utils.logger") as logger:
+        ok_message = Mock(spec=Message)
+        ok_message.value.return_value = serialise_fc00(config_change=1, streams=[])  # type: ignore
+        ok_message.error.return_value = False
+        ok_message.timestamp.return_value = 2, 1
+
+        mock_message.value.return_value = serialise_f144(source_name="test", value=123)
+        mock_message.error.return_value = False
+        mock_message.timestamp.return_value = 2, 1
+
+        deserialise_and_print_messages(
+            [mock_message, ok_message], None, schemas_to_filter_to=["fc00"]
+        )
         assert logger.info.call_count == 1
 
 
@@ -155,3 +176,27 @@ def test_uri_with_no_topic():
     test_broker = "some_broker"
     with pytest.raises(RuntimeError):
         parse_kafka_uri(test_broker)
+
+
+@pytest.mark.parametrize(
+    "timestamp", ["2025-11-19T15:27:11", "2025-11-19T15:27:11Z", "2025-11-19T15:27:11+00:00"]
+)
+def test_parses_datetime_properly_with_string(timestamp):
+    assert dateutil_parsable_or_unix_timestamp(timestamp) == 1763566031000
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "1763566031000",
+        "1763566031",
+        "1763566031000000",
+    ],
+)
+def test_parses_datetime_properly_and_leaves_unix_timestamp_alone(timestamp):
+    assert dateutil_parsable_or_unix_timestamp(timestamp) == int(timestamp)
+
+
+def test_invalid_timestamp_raises():
+    with pytest.raises(ArgumentTypeError):
+        dateutil_parsable_or_unix_timestamp("invalid")

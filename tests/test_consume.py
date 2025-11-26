@@ -82,3 +82,20 @@ def test_consume_but_exception_thrown_consumer_is_closed():
         c.return_value.consume.side_effect = Exception
         consume("somebroker", "sometopic", num_messages=1)
         c.return_value.close.assert_called_once()
+
+
+@patch("saluki.consume.Consumer")
+def test_consume_with_timestamp(mock_consumer):
+    expected_topic = "sometopic"
+    partition = 0
+    timestamp = 1234
+    offset = 2345
+
+    mock_consumer.offsets_for_times.return_value = [
+        TopicPartition(expected_topic, partition, offset)
+    ]
+    consume("somebroker", topic=expected_topic, timestamp=timestamp, partition=partition)
+
+    mock_consumer.return_value.assign.assert_called_with(
+        [TopicPartition(expected_topic, partition, offset)]
+    )

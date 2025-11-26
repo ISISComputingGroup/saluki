@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from confluent_kafka import Consumer, TopicPartition
 
@@ -14,6 +15,8 @@ def consume(
     num_messages: int = 1,
     offset: int | None = None,
     go_forwards: bool = False,
+    schemas_to_filter_to: list[str] | None = None,
+    timestamp: int | None = None,
 ) -> None:
     """
     consume from a topic and deserialise each message
@@ -24,12 +27,14 @@ def consume(
     :param num_messages: number of messages to consume
     :param offset: offset to consume from/to
     :param go_forwards: whether to consume forwards or backwards
+    :param schemas_to_filter_to: schemas in messages to filter to
+    :param timestamp: optionally a timestamp as a starting point
     :return: None
     """
     c = Consumer(
         {
             "bootstrap.servers": broker,
-            "group.id": "saluki",
+            "group.id": f"saluki-consume-{uuid.uuid4()}",
             "session.timeout.ms": 6000,
             "auto.offset.reset": "latest",
             "enable.auto.offset.store": False,
@@ -37,6 +42,10 @@ def consume(
             "metadata.max.age.ms": 6000,
         }
     )
+
+    if timestamp is not None:
+        offset = c.offsets_for_times([TopicPartition(topic, partition, timestamp)])[0].offset
+        logger.debug(f"offset for timestamp {timestamp} is {offset}")
 
     if go_forwards:
         if offset is None:
@@ -57,7 +66,7 @@ def consume(
     try:
         logger.info(f"Consuming {num_messages} messages")
         msgs = c.consume(num_messages)
-        deserialise_and_print_messages(msgs, partition)
+        deserialise_and_print_messages(msgs, partition, schemas_to_filter_to)
     except Exception:
         logger.exception("Got exception while consuming:")
     finally:

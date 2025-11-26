@@ -1,0 +1,103 @@
+from unittest.mock import Mock, patch
+
+import pytest
+from confluent_kafka import Message, TopicPartition
+
+from saluki.play import play
+
+
+def test_play_with_offsets():
+    src_broker = "broker1"
+    src_topic = "topic1"
+    dest_broker = "broker2"
+    dest_topic = "topic2"
+    offsets = [1, 2]
+
+    message_1 = Mock(spec=Message)
+    message_1_key = "msg1key"
+    message_1.key.return_value = message_1_key
+    message_1_val = "msg1"
+    message_1.value.return_value = message_1_val
+
+    message_2 = Mock(spec=Message)
+    message_2_key = "msg2key"
+    message_2.key.return_value = message_2_key
+    message_2_val = "msg2"
+    message_2.value.return_value = message_2_val
+
+    with patch("saluki.play.Consumer") as c, patch("saluki.play.Producer") as p:
+        consumer_obj = c()
+        consumer_obj.consume.return_value = [message_1, message_2]
+
+        play(src_broker, src_topic, dest_broker, dest_topic, offsets, None)
+
+        assert consumer_obj.assign.call_args.args[0][0].topic == src_topic
+        assert consumer_obj.assign.call_args.args[0][0].offset == offsets[0]
+
+        consumer_obj.consume.assert_called_with(2)  # stop - start + 1
+
+        p_obj = p()
+        produce_batch_call = p_obj.produce_batch.call_args.args
+        assert dest_topic == produce_batch_call[0]
+        assert {"key": message_1_key, "value": message_1_val} in produce_batch_call[1]
+        assert {"key": message_2_key, "value": message_2_val} in produce_batch_call[1]
+
+
+def test_play_with_timestamps():
+    src_broker = "broker1"
+    src_topic = "topic1"
+    dest_broker = "broker2"
+    dest_topic = "topic2"
+    timestamps = [1762444369, 1762444375]
+
+    message_1 = Mock(spec=Message)
+    message_1_key = "msg1key"
+    message_1.key.return_value = message_1_key
+    message_1_val = "msg1"
+    message_1.value.return_value = message_1_val
+
+    message_2 = Mock(spec=Message)
+    message_2_key = "msg2key"
+    message_2.key.return_value = message_2_key
+    message_2_val = "msg2"
+    message_2.value.return_value = message_2_val
+
+    with patch("saluki.play.Consumer") as c, patch("saluki.play.Producer") as p:
+        consumer_obj = c()
+        consumer_obj.offsets_for_times.side_effect = [
+            [TopicPartition(src_topic, partition=0, offset=2)],
+            [TopicPartition(src_topic, partition=0, offset=3)],
+        ]
+        consumer_obj.consume.return_value = [message_1, message_2]
+
+        play(src_broker, src_topic, dest_broker, dest_topic, None, timestamps)
+
+        assert consumer_obj.assign.call_args.args[0][0].topic == src_topic
+        assert consumer_obj.assign.call_args.args[0][0].offset == 2
+
+        consumer_obj.consume.assert_called_with(2)  # stop - start + 1
+
+        p_obj = p()
+        produce_batch_call = p_obj.produce_batch.call_args.args
+        assert dest_topic == produce_batch_call[0]
+        assert {"key": message_1_key, "value": message_1_val} in produce_batch_call[1]
+        assert {"key": message_2_key, "value": message_2_val} in produce_batch_call[1]
+
+
+def test_play_with_exception_when_consuming_consumer_still_closed():
+    with (
+        patch("saluki.play.Consumer") as mock_consumer,
+        patch("saluki.play.Producer"),
+        patch("saluki.play.logger") as mock_logger,
+    ):
+        mock_consumer().consume.side_effect = Exception("blah")
+        play("", "", "", "", [1, 2], None)
+
+        mock_logger.exception.assert_called_once()
+
+        mock_consumer().close.assert_called_once()
+
+
+def test_play_raises_when_offsets_and_timestamps_are_none():
+    with pytest.raises(ValueError):
+        play("", "", "", "", None, None)
