@@ -25,6 +25,7 @@ saluki = "saluki.main:main"
 [project.optional-dependencies]
 dev = [
     "pyright",
+    "ty",
     "ruff",
     "pytest",
     "pytest-cov"
