@@ -9,7 +9,8 @@ dependencies = [
     "ess-streaming-data-types",
     "confluent-kafka>=2.12.1", # for produce_batch in play()
     "python-dateutil",
-    "tzdata"
+    "tzdata",
+    "numpy",
 ]
 readme = {file = "README.md", content-type = "text/markdown"}
 license-files = ["LICENSE"]

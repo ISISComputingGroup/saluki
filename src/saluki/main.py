@@ -6,6 +6,7 @@ from saluki.consume import consume
 from saluki.listen import listen
 from saluki.play import play
 from saluki.sniff import sniff
+from saluki.howl import howl
 from saluki.utils import dateutil_parsable_or_unix_timestamp, parse_kafka_uri
 
 logger = logging.getLogger("saluki")
@@ -15,6 +16,7 @@ _LISTEN = "listen"
 _CONSUME = "consume"
 _PLAY = "play"
 _SNIFF = "sniff"
+_HOWL = "howl"
 
 
 def main() -> None:
@@ -52,7 +54,9 @@ def main() -> None:
         _SNIFF, help="sniff - broker metadata", parents=[common_options]
     )
     sniff_parser.add_argument(
-        "broker", type=str, help="broker, optionally suffixed with a topic name to filter to"
+        "broker",
+        type=str,
+        help="broker, optionally suffixed with a topic name to filter to",
     )
 
     consumer_parser = argparse.ArgumentParser(add_help=False)
@@ -65,7 +69,9 @@ def main() -> None:
     )
 
     consumer_mode_parser = sub_parsers.add_parser(
-        _CONSUME, help="consumer mode", parents=[topic_parser, consumer_parser, common_options]
+        _CONSUME,
+        help="consumer mode",
+        parents=[topic_parser, consumer_parser, common_options],
     )
     consumer_mode_parser.add_argument(
         "-m",
@@ -120,6 +126,19 @@ def main() -> None:
         nargs=2,
     )
 
+    howl_parser = sub_parsers.add_parser(
+        _HOWL,
+        help="replay mode - replay data into another topic",
+        parents=[common_options],
+    )
+    howl_parser.add_argument("topic", type=str, help="Destination topic")
+    howl_parser.add_argument("--events-per-frame", type=int, help="Events per frame to simulate")
+    howl_parser.add_argument("--frames-per-second", type=int, help="Frames per second to simulate")
+    howl_parser.add_argument("--tof-peak", type=float, help="Time-of-flight peak (ns)")
+    howl_parser.add_argument("--tof-sigma", type=float, help="Time-of-flight sigma (ns)")
+    howl_parser.add_argument("--det-min", type=int, help="Minimum detector ID")
+    howl_parser.add_argument("--det-max", type=int, help="Maximum detector ID")
+
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
@@ -169,6 +188,19 @@ def main() -> None:
         except RuntimeError:
             logger.debug(f"Sniffing whole broker {args.broker}")
             sniff(args.broker)
+    elif args.command == _HOWL:
+        broker, topic = parse_kafka_uri(args.topic)
+        logger.debug(f"Howling to topic {topic} on broker {broker}")
+        howl(
+            broker,
+            topic,
+            events_per_frame=args.events_per_frame,
+            frames_per_second=args.frames_per_second,
+            tof_peak=args.tof_peak,
+            tof_sigma=args.tof_sigma,
+            det_min=args.det_min,
+            det_max=args.det_max,
+        )
 
 
 if __name__ == "__main__":
