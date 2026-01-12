@@ -3,10 +3,10 @@ import logging
 import sys
 
 from saluki.consume import consume
+from saluki.howl import howl
 from saluki.listen import listen
 from saluki.play import play
 from saluki.sniff import sniff
-from saluki.howl import howl
 from saluki.utils import dateutil_parsable_or_unix_timestamp, parse_kafka_uri
 
 logger = logging.getLogger("saluki")
@@ -131,13 +131,28 @@ def main() -> None:
         help="replay mode - replay data into another topic",
         parents=[common_options],
     )
-    howl_parser.add_argument("topic", type=str, help="Destination topic")
-    howl_parser.add_argument("--events-per-frame", type=int, help="Events per frame to simulate")
-    howl_parser.add_argument("--frames-per-second", type=int, help="Frames per second to simulate")
-    howl_parser.add_argument("--tof-peak", type=float, help="Time-of-flight peak (ns)")
-    howl_parser.add_argument("--tof-sigma", type=float, help="Time-of-flight sigma (ns)")
-    howl_parser.add_argument("--det-min", type=int, help="Minimum detector ID")
-    howl_parser.add_argument("--det-max", type=int, help="Maximum detector ID")
+    howl_parser.add_argument("broker", type=str, help="Kafka broker URL")
+    howl_parser.add_argument("topic_prefix", type=str, help="Topic prefix e.g. INSTNAME")
+    howl_parser.add_argument(
+        "--events-per-frame", type=int, help="Events per frame to simulate", default=100
+    )
+    howl_parser.add_argument(
+        "--frames-per-second", type=int, help="Frames per second to simulate", default=1
+    )
+    howl_parser.add_argument(
+        "--frames-per-run",
+        type=int,
+        help="Frames to take before beginning new run (0 to run forever)",
+        default=0,
+    )
+    howl_parser.add_argument(
+        "--tof-peak", type=float, help="Time-of-flight peak (ns)", default=10_000_000
+    )
+    howl_parser.add_argument(
+        "--tof-sigma", type=float, help="Time-of-flight sigma (ns)", default=2_000_000
+    )
+    howl_parser.add_argument("--det-min", type=int, help="Minimum detector ID", default=0)
+    howl_parser.add_argument("--det-max", type=int, help="Maximum detector ID", default=1000)
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -189,13 +204,12 @@ def main() -> None:
             logger.debug(f"Sniffing whole broker {args.broker}")
             sniff(args.broker)
     elif args.command == _HOWL:
-        broker, topic = parse_kafka_uri(args.topic)
-        logger.debug(f"Howling to topic {topic} on broker {broker}")
         howl(
-            broker,
-            topic,
+            args.broker,
+            args.topic_prefix,
             events_per_frame=args.events_per_frame,
             frames_per_second=args.frames_per_second,
+            frames_per_run=args.frames_per_run,
             tof_peak=args.tof_peak,
             tof_sigma=args.tof_sigma,
             det_min=args.det_min,

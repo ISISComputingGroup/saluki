@@ -70,7 +70,8 @@ def play(
         logger.debug(f"finished consuming {num_messages} messages")
         consumer.close()
         producer.produce_batch(
-            dest_topic, [{"key": message.key(), "value": message.value()} for message in msgs]
+            dest_topic,
+            [{"key": message.key(), "value": message.value()} for message in msgs],
         )
         logger.debug(f"flushing producer. len(p): {len(producer)}")
         producer.flush(timeout=10)
