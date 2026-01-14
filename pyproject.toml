@@ -13,6 +13,7 @@ dependencies = [
 ]
 readme = {file = "README.md", content-type = "text/markdown"}
 license-files = ["LICENSE"]
+requires-python = ">=3.12"
 
 [project.scripts]
 saluki = "saluki.main:main"
