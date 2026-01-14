@@ -19,7 +19,7 @@ jobs:
     uses: ISISComputingGroup/reusable-workflows/.github/workflows/linters.yml@main
     with:
       compare-branch: origin/main
-      python-ver: ${{ matrix.version }}
+      python-ver: '3.13'
       runs-on: ${{ matrix.os }}
   tests:
     strategy:
