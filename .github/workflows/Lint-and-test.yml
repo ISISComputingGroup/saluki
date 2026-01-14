@@ -20,7 +20,7 @@ jobs:
     with:
       compare-branch: origin/main
       python-ver: ${{ matrix.version }}
-      runs-on: ${{ matrix.runs-on }}
+      runs-on: ${{ matrix.os }}
   tests:
     strategy:
         matrix:
