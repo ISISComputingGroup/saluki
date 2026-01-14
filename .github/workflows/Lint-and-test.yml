@@ -36,3 +36,16 @@ jobs:
       run: uv sync --all-extras --dev
     - name: Test with pytest
       run: uv run pytest tests
+  results:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: Final Results
+    needs: [tests, call-workflow]
+    steps:
+    - run: exit 1
+      # see https://stackoverflow.com/a/67532120/4907315
+      if: >-
+          ${{
+               contains(needs.*.result, 'failure')
+            || contains(needs.*.result, 'cancelled')
+          }}
