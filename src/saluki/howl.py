@@ -23,6 +23,7 @@ def generate_fake_events(
 ) -> bytes:
     detector_ids = RNG.integers(low=det_min, high=det_max, size=events_per_frame)
     tofs = np.maximum(0.0, RNG.normal(loc=tof_peak, scale=tof_sigma, size=events_per_frame))
+    tofs.sort()
 
     return serialise_ev44(
         source_name="saluki",
@@ -77,8 +78,12 @@ def howl(
     producer = Producer(
         {
             "bootstrap.servers": broker,
+            "queue.buffering.max.kbytes": 512*1024,
             "queue.buffering.max.messages": 100000,
-            "queue.buffering.max.ms": 20,
+            "queue.buffering.max.ms": 100,
+            "linger.ms": 50,
+            "batch.size": 512 * 1024**2,
+            "request.required.acks": 0,
         }
     )
 
@@ -100,9 +105,10 @@ def howl(
         value=generate_run_start(det_max),
     )
 
+    target_time = time.time()
+
     while True:
-        start_time = time.time()
-        target_end_time = start_time + target_frame_time
+        target_time += target_frame_time
 
         producer.produce(
             topic=f"{topic_prefix}_events",
@@ -110,6 +116,7 @@ def howl(
             value=generate_fake_events(
                 frames, events_per_frame, tof_peak, tof_sigma, det_min, det_max
             ),
+            timestamp=int(time.time() * 1000),
         )
         producer.poll(0)
         frames += 1
@@ -120,14 +127,19 @@ def howl(
                 topic=f"{topic_prefix}_runInfo",
                 key=None,
                 value=generate_run_stop(),
+                timestamp=int(time.time() * 1000),
             )
             producer.produce(
                 topic=f"{topic_prefix}_runInfo",
                 key=None,
                 value=generate_run_start(det_max),
+                timestamp=int(time.time() * 1000),
             )
 
-        sleep_time = max(target_end_time - time.time(), 0)
-        if sleep_time == 0:
-            logger.warning("saluki-howl cannot keep up with target event/frame rate")
-        time.sleep(sleep_time)
+        sleep_time = max(target_time - time.time(), 0)
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
+        t_diff = abs(time.time() - target_time)
+        if t_diff > 10:
+            logger.warning(f"saluki-howl running {t_diff:.3f} seconds behind schedule")

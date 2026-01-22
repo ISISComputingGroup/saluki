@@ -28,6 +28,9 @@ def listen(
             "group.id": f"saluki-listen-{uuid.uuid4()}",
             "auto.offset.reset": "latest",
             "enable.auto.commit": False,
+            "fetch.message.max.bytes": 512 * 1024**2,  # 512MB
+            "fetch.max.bytes": 512 * 1024**2,  # 512MB
+            "max.partition.fetch.bytes": 512 * 1024**2,  # 512MB
         }
     )
     c.subscribe([topic])
