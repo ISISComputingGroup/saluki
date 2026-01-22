@@ -78,12 +78,12 @@ def howl(
     producer = Producer(
         {
             "bootstrap.servers": broker,
-            "queue.buffering.max.kbytes": 512*1024,
+            "queue.buffering.max.kbytes": 1024 * 1024,
             "queue.buffering.max.messages": 100000,
             "queue.buffering.max.ms": 100,
-            "linger.ms": 50,
+            "linger.ms": 10,
             "batch.size": 512 * 1024**2,
-            "request.required.acks": 0,
+            "batch.num.messages": 100_000,
         }
     )
 
@@ -96,7 +96,10 @@ def howl(
     )
     rate_bytes_per_sec = ev44_size * frames_per_second
     rate_mbit_per_sec = (rate_bytes_per_sec / 1024**2) * 8
-    logger.info(f"Attempting to simulate data rate: {rate_mbit_per_sec:.3f} Mbit/s")
+    logger.info(
+        f"Attempting to simulate data rate: {rate_mbit_per_sec:.3f} Mbit/s "
+        f"({rate_mbit_per_sec / 8:.3f} MiB/s)"
+    )
     logger.info(f"Each ev44 is {ev44_size} bytes")
 
     producer.produce(
@@ -104,6 +107,7 @@ def howl(
         key=None,
         value=generate_run_start(det_max),
     )
+    producer.flush()
 
     target_time = time.time()
 
