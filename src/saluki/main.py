@@ -43,7 +43,7 @@ def main() -> None:
         required=False,
         default=None,
     )
-    topic_parser.add_argument("-p", "--partition", required=False, type=int, default=0)
+    topic_parser.add_argument("-p", "--partition", required=False, type=int)
     topic_parser.add_argument("-f", "--filter", required=False, action="append")
 
     sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")

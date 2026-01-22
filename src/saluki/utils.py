@@ -49,7 +49,7 @@ def deserialise_and_print_messages(
             if schemas_to_filter_to is not None and schema not in schemas_to_filter_to:
                 continue
             time = _parse_timestamp(msg)
-            logger.info(f"(o:{msg.offset()},t:{time},s:{schema}) {deserialised}")
+            logger.info(f"(o:{msg.offset()},p:{msg.partition()},t:{time},s:{schema}) {deserialised}")
         except Exception as e:
             logger.exception(f"Got error while deserialising: {e}")
 
