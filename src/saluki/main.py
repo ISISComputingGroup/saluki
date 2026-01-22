@@ -43,7 +43,6 @@ def main() -> None:
         required=False,
         default=None,
     )
-    topic_parser.add_argument("-p", "--partition", required=False, type=int)
     topic_parser.add_argument("-f", "--filter", required=False, action="append")
 
     sub_parsers = parser.add_subparsers(help="sub-command help", required=True, dest="command")
@@ -75,6 +74,8 @@ def main() -> None:
         required=False,
         default=1,
     )
+    consumer_mode_parser.add_argument("-p", "--partition", help="Partition to consume from. Defaults to 0.", required=False, type=int, default=0)
+
 
     consumer_mode_parser.add_argument("-g", "--go-forwards", required=False, action="store_true")
     cg = consumer_mode_parser.add_mutually_exclusive_group(required=False)
@@ -96,6 +97,7 @@ def main() -> None:
         help="listen mode - listen until KeyboardInterrupt",
         parents=[topic_parser, consumer_parser, common_options],
     )
+    listen_parser.add_argument("-p", "--partition", required=False, type=int, help="Partition to filter messages from. Default is all partitions in the given topic.")    
 
     play_parser = sub_parsers.add_parser(
         _PLAY,
