@@ -60,6 +60,55 @@ def generate_run_stop() -> bytes:
     )
 
 
+def make_producer(broker: str) -> Producer:
+    return Producer(
+        {
+            "bootstrap.servers": broker,
+            "queue.buffering.max.kbytes": 1024 * 1024,
+            "queue.buffering.max.messages": 100000,
+            "linger.ms": 10,
+            "batch.num.messages": 10_000,
+            "max.in.flight.requests.per.connection": 32,
+        },
+    )
+
+
+def produce_messages(
+    producer: Producer,
+    topic_prefix: str,
+    frame: int,
+    events_per_frame: int,
+    frames_per_run: int,
+    tof_peak: float,
+    tof_sigma: float,
+    det_min: int,
+    det_max: int,
+) -> None:
+    now = time.time()
+    producer.produce(
+        topic=f"{topic_prefix}_events",
+        key=None,
+        value=generate_fake_events(frame, events_per_frame, tof_peak, tof_sigma, det_min, det_max),
+        timestamp=int(now * 1000),
+    )
+    producer.poll(0)
+
+    if frames_per_run != 0 and frame % frames_per_run == 0:
+        logger.info(f"Starting new run after {frames_per_run} simulated frames")
+        producer.produce(
+            topic=f"{topic_prefix}_runInfo",
+            key=None,
+            value=generate_run_stop(),
+            timestamp=int(now * 1000),
+        )
+        producer.produce(
+            topic=f"{topic_prefix}_runInfo",
+            key=None,
+            value=generate_run_start(det_max),
+            timestamp=int(now * 1000),
+        )
+
+
 def howl(
     broker: str,
     topic_prefix: str,
@@ -70,22 +119,11 @@ def howl(
     tof_sigma: float,
     det_min: int,
     det_max: int,
-) -> None:
+) -> None:  # pragma: no cover (infinite loop)
     """
     Send messages vaguely resembling a run to Kafka.
     """
-
-    producer = Producer(
-        {
-            "bootstrap.servers": broker,
-            "queue.buffering.max.kbytes": 1024 * 1024,
-            "queue.buffering.max.messages": 100000,
-            "queue.buffering.max.ms": 100,
-            "linger.ms": 10,
-            "batch.size": 512 * 1024**2,
-            "batch.num.messages": 100_000,
-        }
-    )
+    producer = make_producer(broker)
 
     target_frame_time = 1 / frames_per_second
 
@@ -96,6 +134,7 @@ def howl(
     )
     rate_bytes_per_sec = ev44_size * frames_per_second
     rate_mbit_per_sec = (rate_bytes_per_sec / 1024**2) * 8
+
     logger.info(
         f"Attempting to simulate data rate: {rate_mbit_per_sec:.3f} Mbit/s "
         f"({rate_mbit_per_sec / 8:.3f} MiB/s)"
@@ -107,43 +146,28 @@ def howl(
         key=None,
         value=generate_run_start(det_max),
     )
-    producer.flush()
 
     target_time = time.time()
 
     while True:
         target_time += target_frame_time
-
-        producer.produce(
-            topic=f"{topic_prefix}_events",
-            key=None,
-            value=generate_fake_events(
-                frames, events_per_frame, tof_peak, tof_sigma, det_min, det_max
-            ),
-            timestamp=int(time.time() * 1000),
-        )
-        producer.poll(0)
         frames += 1
 
-        if frames_per_run != 0 and frames % frames_per_run == 0:
-            logger.info(f"Starting new run after {frames_per_run} simulated frames")
-            producer.produce(
-                topic=f"{topic_prefix}_runInfo",
-                key=None,
-                value=generate_run_stop(),
-                timestamp=int(time.time() * 1000),
-            )
-            producer.produce(
-                topic=f"{topic_prefix}_runInfo",
-                key=None,
-                value=generate_run_start(det_max),
-                timestamp=int(time.time() * 1000),
-            )
+        produce_messages(
+            producer,
+            topic_prefix,
+            frames,
+            events_per_frame,
+            frames_per_run,
+            tof_peak,
+            tof_sigma,
+            det_min,
+            det_max,
+        )
 
-        sleep_time = max(target_time - time.time(), 0)
+        sleep_time = target_time - time.time()
+
         if sleep_time > 0:
             time.sleep(sleep_time)
-
-        t_diff = abs(time.time() - target_time)
-        if t_diff > 10:
-            logger.warning(f"saluki-howl running {t_diff:.3f} seconds behind schedule")
+        elif sleep_time < -10:
+            logger.warning(f"saluki-howl running {abs(sleep_time):.3f} seconds behind schedule")
