@@ -29,7 +29,6 @@ def listen(
             "enable.auto.commit": False,
             "fetch.message.max.bytes": 512 * 1024**2,  # 512MB
             "fetch.max.bytes": 512 * 1024**2,  # 512MB
-            "fetch.min.bytes": 512 * 1024**2,  # 1MB
             "max.partition.fetch.bytes": 512 * 1024**2,  # 512MB
         }
     )
