@@ -78,7 +78,9 @@ def test_deserialising_message_which_raises_does_not_stop_loop(mock_message):
         assert logger.info.call_count == 1
 
 
-def test_deserialising_with_schema_list_ignores_messages_with_schema_not_in_list(mock_message):
+def test_deserialising_with_schema_list_ignores_messages_with_schema_not_in_list(
+    mock_message,
+):
     with patch("saluki.utils.logger") as logger:
         ok_message = Mock(spec=Message)
         ok_message.value.return_value = serialise_fc00(config_change=1, streams=[])  # type: ignore
@@ -179,7 +181,8 @@ def test_uri_with_no_topic():
 
 
 @pytest.mark.parametrize(
-    "timestamp", ["2025-11-19T15:27:11", "2025-11-19T15:27:11Z", "2025-11-19T15:27:11+00:00"]
+    "timestamp",
+    ["2025-11-19T15:27:11", "2025-11-19T15:27:11Z", "2025-11-19T15:27:11+00:00"],
 )
 def test_parses_datetime_properly_with_string(timestamp):
     assert dateutil_parsable_or_unix_timestamp(timestamp) == 1763566031000
