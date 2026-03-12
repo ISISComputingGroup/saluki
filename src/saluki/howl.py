@@ -88,19 +88,21 @@ def produce_messages(
     det_max: int,
 ) -> None:
     now = time.time()
+    ev44 = generate_fake_events(
+        frame,
+        events_per_message,
+        tof_peak,
+        tof_sigma,
+        det_min,
+        det_max,
+        timestamp=now,
+    )
+
     for _ in range(messages_per_frame):
         producer.produce(
             topic=f"{topic_prefix}_rawEvents",
             key=None,
-            value=generate_fake_events(
-                frame,
-                events_per_message,
-                tof_peak,
-                tof_sigma,
-                det_min,
-                det_max,
-                timestamp=now,
-            ),
+            value=ev44,
             timestamp=int(now * 1000),
         )
     producer.poll(0)
