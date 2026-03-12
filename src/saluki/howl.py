@@ -15,19 +15,20 @@ RNG = np.random.default_rng()
 
 def generate_fake_events(
     msg_id: int,
-    events_per_frame: int,
+    events_per_message: int,
     tof_peak: float,
     tof_sigma: float,
     det_min: int,
     det_max: int,
+    timestamp: float,
 ) -> bytes:
-    detector_ids = RNG.integers(low=det_min, high=det_max, size=events_per_frame)
-    tofs = np.maximum(0.0, RNG.normal(loc=tof_peak, scale=tof_sigma, size=events_per_frame))
+    detector_ids = RNG.integers(low=det_min, high=det_max, size=events_per_message)
+    tofs = np.maximum(0.0, RNG.normal(loc=tof_peak, scale=tof_sigma, size=events_per_message))
     tofs.sort()
 
     return serialise_ev44(
         source_name="saluki",
-        reference_time=[time.time() * 1_000_000_000],
+        reference_time=[timestamp * 1_000_000_000],
         message_id=msg_id,
         reference_time_index=[0],
         time_of_flight=tofs,
@@ -69,6 +70,7 @@ def make_producer(broker: str) -> Producer:
             "linger.ms": 10,
             "batch.num.messages": 10_000,
             "max.in.flight.requests.per.connection": 32,
+            "acks": 1,
         },
     )
 
@@ -77,7 +79,8 @@ def produce_messages(
     producer: Producer,
     topic_prefix: str,
     frame: int,
-    events_per_frame: int,
+    events_per_message: int,
+    messages_per_frame: int,
     frames_per_run: int,
     tof_peak: float,
     tof_sigma: float,
@@ -85,12 +88,13 @@ def produce_messages(
     det_max: int,
 ) -> None:
     now = time.time()
-    producer.produce(
-        topic=f"{topic_prefix}_events",
-        key=None,
-        value=generate_fake_events(frame, events_per_frame, tof_peak, tof_sigma, det_min, det_max),
-        timestamp=int(now * 1000),
-    )
+    for _ in range(messages_per_frame):
+        producer.produce(
+            topic=f"{topic_prefix}_rawEvents",
+            key=None,
+            value=generate_fake_events(frame, events_per_message, tof_peak, tof_sigma, det_min, det_max, timestamp=now),
+            timestamp=int(now * 1000),
+        )
     producer.poll(0)
 
     if frames_per_run != 0 and frame % frames_per_run == 0:
@@ -112,7 +116,8 @@ def produce_messages(
 def howl(
     broker: str,
     topic_prefix: str,
-    events_per_frame: int,
+    events_per_message: int,
+    messages_per_frame: int,
     frames_per_second: int,
     frames_per_run: int,
     tof_peak: float,
@@ -130,9 +135,9 @@ def howl(
     frames = 0
 
     ev44_size = len(
-        generate_fake_events(0, events_per_frame, tof_peak, tof_sigma, det_min, det_max)
+        generate_fake_events(0, events_per_message, tof_peak, tof_sigma, det_min, det_max, timestamp=time.time())
     )
-    rate_bytes_per_sec = ev44_size * frames_per_second
+    rate_bytes_per_sec = ev44_size * messages_per_frame * frames_per_second
     rate_mbit_per_sec = (rate_bytes_per_sec / 1024**2) * 8
 
     logger.info(
@@ -157,7 +162,8 @@ def howl(
             producer,
             topic_prefix,
             frames,
-            events_per_frame,
+            events_per_message,
+            messages_per_frame,
             frames_per_run,
             tof_peak,
             tof_sigma,
@@ -169,5 +175,5 @@ def howl(
 
         if sleep_time > 0:
             time.sleep(sleep_time)
-        elif sleep_time < -10:
+        else:
             logger.warning(f"saluki-howl running {abs(sleep_time):.3f} seconds behind schedule")
