@@ -134,10 +134,16 @@ def main() -> None:
     howl_parser.add_argument("broker", type=str, help="Kafka broker URL")
     howl_parser.add_argument("topic_prefix", type=str, help="Topic prefix e.g. INSTNAME")
     howl_parser.add_argument(
-        "--events-per-message", type=int, help="Events per ev44 to simulate", default=100
+        "--events-per-message",
+        type=int,
+        help="Events per ev44 to simulate",
+        default=100,
     )
     howl_parser.add_argument(
-        "--messages-per-frame", type=int, help="Number of ev44 per frame to simulate", default=20
+        "--messages-per-frame",
+        type=int,
+        help="Number of ev44 per frame to simulate",
+        default=20,
     )
     howl_parser.add_argument(
         "--frames-per-second", type=int, help="Frames per second to simulate", default=1

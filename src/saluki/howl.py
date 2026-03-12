@@ -92,7 +92,15 @@ def produce_messages(
         producer.produce(
             topic=f"{topic_prefix}_rawEvents",
             key=None,
-            value=generate_fake_events(frame, events_per_message, tof_peak, tof_sigma, det_min, det_max, timestamp=now),
+            value=generate_fake_events(
+                frame,
+                events_per_message,
+                tof_peak,
+                tof_sigma,
+                det_min,
+                det_max,
+                timestamp=now,
+            ),
             timestamp=int(now * 1000),
         )
     producer.poll(0)
@@ -135,7 +143,15 @@ def howl(
     frames = 0
 
     ev44_size = len(
-        generate_fake_events(0, events_per_message, tof_peak, tof_sigma, det_min, det_max, timestamp=time.time())
+        generate_fake_events(
+            0,
+            events_per_message,
+            tof_peak,
+            tof_sigma,
+            det_min,
+            det_max,
+            timestamp=time.time(),
+        )
     )
     rate_bytes_per_sec = ev44_size * messages_per_frame * frames_per_second
     rate_mbit_per_sec = (rate_bytes_per_sec / 1024**2) * 8
