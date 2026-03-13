@@ -14,14 +14,14 @@ from saluki.howl import (
 
 
 def test_generate_run_start():
-    pl72 = deserialise_pl72(generate_run_start(50000, "test"))
+    pl72 = deserialise_pl72(generate_run_start(50000, "test", "some_job_id"))
     det_spec_map = pl72.detector_spectrum_map
     assert det_spec_map is not None
     assert det_spec_map.n_spectra == 50000
 
 
 def test_generate_run_stop():
-    deserialise_6s4t(generate_run_stop())
+    deserialise_6s4t(generate_run_stop("some_job_id"))
 
 
 def test_generate_events():
@@ -60,6 +60,7 @@ def test_produce_event_messages():
         tof_sigma=0,
         det_min=5,
         det_max=6,
+        current_job_id="some_job_id",
     )
 
     producer.produce.assert_called_once_with(
@@ -81,6 +82,7 @@ def test_produce_runinfo_messages():
         tof_sigma=0,
         det_min=5,
         det_max=6,
+        current_job_id="some_job_id",
     )
 
     # event followed by run stop and run start pair.

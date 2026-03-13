@@ -36,7 +36,7 @@ def generate_fake_events(
     )
 
 
-def generate_run_start(det_max: int, topic_prefix: str) -> bytes:
+def generate_run_start(det_max: int, topic_prefix: str, job_id: str) -> bytes:
     det_spec_map = DetectorSpectrumMap(
         detector_ids=np.arange(0, det_max, dtype=np.int32),
         spectrum_numbers=np.arange(0, det_max, dtype=np.int32),
@@ -76,16 +76,16 @@ def generate_run_start(det_max: int, topic_prefix: str) -> bytes:
         run_name=f"saluki-howl-{uuid.uuid4()}",
         instrument_name="saluki-howl",
         nexus_structure=json.dumps(nexus_structure),
-        job_id=str(uuid.uuid4()),
+        job_id=job_id,
         filename=str(uuid.uuid4()),
         detector_spectrum_map=det_spec_map,
     )
 
 
-def generate_run_stop() -> bytes:
+def generate_run_stop(job_id: str) -> bytes:
     return serialise_6s4t(
         stop_time=int(time.time() * 1000),
-        job_id=str(uuid.uuid4()),
+        job_id=job_id,
     )
 
 
@@ -114,6 +114,7 @@ def produce_messages(
     tof_sigma: float,
     det_min: int,
     det_max: int,
+    current_job_id: str,
 ) -> None:
     now = time.time()
     ev44 = generate_fake_events(
@@ -140,13 +141,14 @@ def produce_messages(
         producer.produce(
             topic=f"{topic_prefix}_runInfo",
             key=None,
-            value=generate_run_stop(),
+            value=generate_run_stop(current_job_id),
             timestamp=int(now * 1000),
         )
+        current_job_id = str(uuid.uuid4())
         producer.produce(
             topic=f"{topic_prefix}_runInfo",
             key=None,
-            value=generate_run_start(det_max, topic_prefix),
+            value=generate_run_start(det_max, topic_prefix, current_job_id),
             timestamp=int(now * 1000),
         )
 
@@ -192,10 +194,11 @@ def howl(
     )
     logger.info(f"Each ev44 is {ev44_size} bytes")
 
+    current_job_id = str(uuid.uuid4())
     producer.produce(
         topic=f"{topic_prefix}_runInfo",
         key=None,
-        value=generate_run_start(det_max, topic_prefix),
+        value=generate_run_start(det_max, topic_prefix, current_job_id),
     )
 
     target_time = time.time()
