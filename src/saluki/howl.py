@@ -36,18 +36,46 @@ def generate_fake_events(
     )
 
 
-def generate_run_start(det_max: int) -> bytes:
+def generate_run_start(det_max: int, topic_prefix: str) -> bytes:
     det_spec_map = DetectorSpectrumMap(
         detector_ids=np.arange(0, det_max, dtype=np.int32),
         spectrum_numbers=np.arange(0, det_max, dtype=np.int32),
         n_spectra=det_max,
     )
+
+    nexus_structure = {
+        "children": [
+            {
+                "type": "group",
+                "name": "raw_data_1",
+                "children": [
+                    {
+                        "type": "group",
+                        "name": "events",
+                        "children": [
+                            {
+                                "type": "stream",
+                                "stream": {
+                                    "topic": f"{topic_prefix}_events",
+                                    "source": "saluki_howl",
+                                    "writer_module": "ev44",
+                                },
+                            },
+                        ],
+                        "attributes": [{"name": "NX_class", "values": "NXentry"}],
+                    },
+                ],
+                "attributes": [{"name": "NX_class", "values": "NXentry"}],
+            }
+        ]
+    }
+
     return serialise_pl72(
         start_time=int(time.time() * 1000),
         stop_time=None,
         run_name=f"saluki-howl-{uuid.uuid4()}",
         instrument_name="saluki-howl",
-        nexus_structure=json.dumps({}),
+        nexus_structure=json.dumps(nexus_structure),
         job_id=str(uuid.uuid4()),
         filename=str(uuid.uuid4()),
         detector_spectrum_map=det_spec_map,
@@ -118,7 +146,7 @@ def produce_messages(
         producer.produce(
             topic=f"{topic_prefix}_runInfo",
             key=None,
-            value=generate_run_start(det_max),
+            value=generate_run_start(det_max, topic_prefix),
             timestamp=int(now * 1000),
         )
 
@@ -167,7 +195,7 @@ def howl(
     producer.produce(
         topic=f"{topic_prefix}_runInfo",
         key=None,
-        value=generate_run_start(det_max),
+        value=generate_run_start(det_max, topic_prefix),
     )
 
     target_time = time.time()

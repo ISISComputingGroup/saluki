@@ -14,7 +14,7 @@ from saluki.howl import (
 
 
 def test_generate_run_start():
-    pl72 = deserialise_pl72(generate_run_start(50000))
+    pl72 = deserialise_pl72(generate_run_start(50000, "test"))
     det_spec_map = pl72.detector_spectrum_map
     assert det_spec_map is not None
     assert det_spec_map.n_spectra == 50000
