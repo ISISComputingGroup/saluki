@@ -28,11 +28,12 @@ def test_generate_events():
     ev44 = deserialise_ev44(
         generate_fake_events(
             msg_id=123,
-            events_per_frame=1,
+            events_per_message=1,
             tof_peak=12345,
             tof_sigma=0,
             det_min=5,
             det_max=6,
+            timestamp=12345,
         )
     )
     assert ev44.message_id == 123
@@ -53,7 +54,8 @@ def test_produce_event_messages():
         "some_prefix",
         frame=1,
         frames_per_run=10,
-        events_per_frame=1,
+        messages_per_frame=1,
+        events_per_message=1,
         tof_peak=12345,
         tof_sigma=0,
         det_min=5,
@@ -61,7 +63,7 @@ def test_produce_event_messages():
     )
 
     producer.produce.assert_called_once_with(
-        topic="some_prefix_events", key=None, value=ANY, timestamp=ANY
+        topic="some_prefix_rawEvents", key=None, value=ANY, timestamp=ANY
     )
 
 
@@ -73,7 +75,8 @@ def test_produce_runinfo_messages():
         "some_prefix",
         frame=10,
         frames_per_run=10,
-        events_per_frame=1,
+        messages_per_frame=1,
+        events_per_message=1,
         tof_peak=12345,
         tof_sigma=0,
         det_min=5,
@@ -83,7 +86,7 @@ def test_produce_runinfo_messages():
     # event followed by run stop and run start pair.
     producer.produce.assert_has_calls(
         [
-            call(topic="some_prefix_events", key=None, value=ANY, timestamp=ANY),
+            call(topic="some_prefix_rawEvents", key=None, value=ANY, timestamp=ANY),
             call(topic="some_prefix_runInfo", key=None, value=ANY, timestamp=ANY),
             call(topic="some_prefix_runInfo", key=None, value=ANY, timestamp=ANY),
         ]
