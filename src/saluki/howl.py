@@ -115,7 +115,11 @@ def produce_messages(
     det_min: int,
     det_max: int,
     current_job_id: str,
-) -> None:
+) -> str:
+    """
+    Returns:
+        Currently open JobID
+    """
     now = time.time()
     ev44 = generate_fake_events(
         frame,
@@ -151,6 +155,7 @@ def produce_messages(
             value=generate_run_start(det_max, topic_prefix, current_job_id),
             timestamp=int(now * 1000),
         )
+    return current_job_id
 
 
 def howl(
@@ -207,7 +212,7 @@ def howl(
         target_time += target_frame_time
         frames += 1
 
-        produce_messages(
+        current_job_id = produce_messages(
             producer,
             topic_prefix,
             frames,
@@ -218,6 +223,7 @@ def howl(
             tof_sigma,
             det_min,
             det_max,
+            current_job_id,
         )
 
         sleep_time = target_time - time.time()
