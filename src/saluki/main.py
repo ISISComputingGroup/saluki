@@ -3,6 +3,7 @@ import logging
 import sys
 
 from saluki.consume import consume
+from saluki.howl import howl
 from saluki.listen import listen
 from saluki.play import play
 from saluki.sniff import sniff
@@ -15,6 +16,7 @@ _LISTEN = "listen"
 _CONSUME = "consume"
 _PLAY = "play"
 _SNIFF = "sniff"
+_HOWL = "howl"
 
 
 def main() -> None:
@@ -52,7 +54,9 @@ def main() -> None:
         _SNIFF, help="sniff - broker metadata", parents=[common_options]
     )
     sniff_parser.add_argument(
-        "broker", type=str, help="broker, optionally suffixed with a topic name to filter to"
+        "broker",
+        type=str,
+        help="broker, optionally suffixed with a topic name to filter to",
     )
 
     consumer_parser = argparse.ArgumentParser(add_help=False)
@@ -65,7 +69,9 @@ def main() -> None:
     )
 
     consumer_mode_parser = sub_parsers.add_parser(
-        _CONSUME, help="consumer mode", parents=[topic_parser, consumer_parser, common_options]
+        _CONSUME,
+        help="consumer mode",
+        parents=[topic_parser, consumer_parser, common_options],
     )
     consumer_mode_parser.add_argument(
         "-m",
@@ -120,6 +126,43 @@ def main() -> None:
         nargs=2,
     )
 
+    howl_parser = sub_parsers.add_parser(
+        _HOWL,
+        help="replay mode - replay data into another topic",
+        parents=[common_options],
+    )
+    howl_parser.add_argument("broker", type=str, help="Kafka broker URL")
+    howl_parser.add_argument("topic_prefix", type=str, help="Topic prefix e.g. INSTNAME")
+    howl_parser.add_argument(
+        "--events-per-message",
+        type=int,
+        help="Events per ev44 to simulate",
+        default=100,
+    )
+    howl_parser.add_argument(
+        "--messages-per-frame",
+        type=int,
+        help="Number of ev44 per frame to simulate",
+        default=20,
+    )
+    howl_parser.add_argument(
+        "--frames-per-second", type=int, help="Frames per second to simulate", default=1
+    )
+    howl_parser.add_argument(
+        "--frames-per-run",
+        type=int,
+        help="Frames to take before beginning new run (0 to run forever)",
+        default=0,
+    )
+    howl_parser.add_argument(
+        "--tof-peak", type=float, help="Time-of-flight peak (ns)", default=10_000_000
+    )
+    howl_parser.add_argument(
+        "--tof-sigma", type=float, help="Time-of-flight sigma (ns)", default=2_000_000
+    )
+    howl_parser.add_argument("--det-min", type=int, help="Minimum detector ID", default=0)
+    howl_parser.add_argument("--det-max", type=int, help="Maximum detector ID", default=1000)
+
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
@@ -169,6 +212,19 @@ def main() -> None:
         except RuntimeError:
             logger.debug(f"Sniffing whole broker {args.broker}")
             sniff(args.broker)
+    elif args.command == _HOWL:
+        howl(
+            args.broker,
+            args.topic_prefix,
+            events_per_message=args.events_per_message,
+            messages_per_frame=args.messages_per_frame,
+            frames_per_second=args.frames_per_second,
+            frames_per_run=args.frames_per_run,
+            tof_peak=args.tof_peak,
+            tof_sigma=args.tof_sigma,
+            det_min=args.det_min,
+            det_max=args.det_max,
+        )
 
 
 if __name__ == "__main__":

@@ -59,6 +59,15 @@ INFO:saluki:            0 - low:7515, high:7551, num_messages:36
 
 `saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -t 1762209990 1762209992` - This will forward messages between the two given timestamps.
 
+## `howl` - Produce fake run-like messages
+
+`saluki-howl` emits `ev44` events, `pl72` run starts, and `6s4t` run stops to Kafka, in a format which
+look somewhat like a real run.
+
+```
+saluki howl mybroker:9092 SOME_PREFIX
+```
+
 # Developer setup 
 `pip install -e .[dev]`
 

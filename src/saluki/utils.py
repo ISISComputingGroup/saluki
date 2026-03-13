@@ -34,7 +34,9 @@ def _try_to_deserialise_message(payload: bytes) -> Tuple[str | None, str | None]
 
 
 def deserialise_and_print_messages(
-    msgs: List[Message], partition: int | None, schemas_to_filter_to: list[str] | None = None
+    msgs: List[Message],
+    partition: int | None,
+    schemas_to_filter_to: list[str] | None = None,
 ) -> None:
     for msg in msgs:
         try:
