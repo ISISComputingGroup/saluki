@@ -2,6 +2,7 @@ mod cli_utils;
 mod consume;
 mod sniff;
 
+use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec};
 use log::debug;
@@ -33,7 +34,8 @@ enum Commands {
         #[arg(short, long, requires = "messages", default_value = "false")]
         go_forwards: Option<bool>,
     },
-    // TODO Sniff { broker: String },
+    /// Print broker metadata.
+    Sniff { broker: String },
     // TODO Howl {},
     // TODO Play {},
 }
@@ -64,8 +66,8 @@ fn main() {
                 go_forwards,
                 timestamp,
             )
-        } // Commands::Sniff { broker } => {}
-          // Commands::Howl {} => {}
-          // Commands::Play {} => {}
+        }
+        Commands::Sniff { broker } => sniff(&broker), // Commands::Howl {} => {}
+                                                      // Commands::Play {} => {}
     }
 }

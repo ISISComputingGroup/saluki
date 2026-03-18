@@ -36,7 +36,7 @@ pub fn consume(
     for message in consumer.iter() {
         match message {
             Ok(message) => {
-                if partition.is_some() && (message.partition() != partition.unwrap()) {
+                if partition.is_some() && message.partition() != partition.unwrap() {
                     continue;
                 }
                 // TODO get file id
@@ -52,9 +52,9 @@ pub fn consume(
                 break;
             }
         }
-        if (num_messages.is_some()) {
+        if num_messages.is_some() {
             counter += 1;
-            if (counter == num_messages.unwrap()) {
+            if counter == num_messages.unwrap() {
                 debug!("Reached {} messages, exiting", num_messages.unwrap());
                 break;
             }
