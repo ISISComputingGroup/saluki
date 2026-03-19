@@ -47,7 +47,7 @@ enum Commands {
     },
     Howl {
         /// Kafka Broker URL, including port
-        broker: String, // TODO and optionally port
+        broker: String,
         /// topic prefix to use eg. INSTNAME
         topic_prefix: String,
         /// Events per ev44 to simulate
