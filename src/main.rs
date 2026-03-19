@@ -52,7 +52,7 @@ enum Commands {
         topic_prefix: String,
         /// Events per ev44 to simulate
         #[arg(short, long, default_value = "100")]
-        events_per_message: u32,
+        events_per_message: i32,
         /// Number of ev44 per frame to simulate
         #[arg(short, long, default_value = "20")]
         messages_per_frame: u32,
@@ -63,17 +63,17 @@ enum Commands {
         #[arg(long, default_value = "0")]
         frames_per_run: u32,
         /// Time-of-flight peak (ns)
-        #[arg(long, default_value = "10000000")]
-        tof_peak: u32,
+        #[arg(long, default_value = "10000000.0")]
+        tof_peak: f32,
         /// Time-of-flight sigma (ns)
-        #[arg(long, default_value = "2000000")]
-        tof_sigma: u32,
+        #[arg(long, default_value = "2000000.0")]
+        tof_sigma: f32,
         /// Minimum detector ID
         #[arg(long, default_value = "0")]
-        det_min: u32,
+        det_min: i32,
         /// Maximum detector ID
         #[arg(long, default_value = "1000")]
-        det_max: u32,
+        det_max: i32,
     }, // TODO Play {},
 }
 
