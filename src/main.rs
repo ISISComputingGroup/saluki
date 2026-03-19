@@ -99,9 +99,9 @@ fn main() {
                 topic.host, topic.port, topic.topic
             );
             consume::consume(
-                topic,
+                &topic,
                 partition,
-                filter,
+                &filter,
                 messages,
                 offset,
                 go_forwards,

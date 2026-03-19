@@ -1,13 +1,15 @@
 use crate::cli_utils::BrokerAndTopic;
+use isis_streaming_data_types::{deserialize_message, get_schema_id};
 use log::{debug, error};
 use rdkafka::consumer::{BaseConsumer, Consumer};
+use rdkafka::message::ToBytes;
 use rdkafka::{ClientConfig, Message};
 use uuid::Uuid;
 
 pub fn consume(
-    topic: BrokerAndTopic,
+    topic: &BrokerAndTopic,
     partition: Option<i32>,
-    filter: Option<String>,
+    filter: &Option<String>,
     num_messages: Option<u32>,
     offset: Option<i64>,
     go_forwards: Option<bool>,
@@ -19,7 +21,7 @@ pub fn consume(
         partition.unwrap_or(1),
         topic.host,
         topic.port,
-        filter.unwrap_or("none".to_string())
+        filter.as_deref().unwrap_or("none")
     );
     let consumer: BaseConsumer = ClientConfig::new()
         .set("group.id", Uuid::new_v4().to_string())
@@ -39,13 +41,28 @@ pub fn consume(
                 if partition.is_some() && message.partition() != partition.unwrap() {
                     continue;
                 }
-                // TODO get file id
-                // TODO filter if filtering
-                // TODO deserialise
-                println!(
-                    "Received message: {:?}",
-                    String::from_utf8_lossy(message.payload().unwrap())
-                );
+
+                match message.payload() {
+                    Some(p) => {
+                        if let Some(f) = filter {
+                            if let Some(schema_id) = get_schema_id(p) {
+                                if schema_id != f.to_bytes() {
+                                    continue;
+                                }
+                            }
+                            debug!("Message has no schema id, ignoring filter")
+                        }
+
+                        match deserialize_message(p) {
+                            Ok(d) => println!("{:?}", d),
+                            Err(e) => println!("Failed to deserialize message: {:?}", e),
+                        }
+                    }
+                    None => {
+                        error!("No payload in message");
+                        continue;
+                    }
+                }
             }
             Err(e) => {
                 error!("Consumer error: {:?}", e);
