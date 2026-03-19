@@ -1,7 +1,9 @@
 mod cli_utils;
 mod consume;
+mod howl;
 mod sniff;
 
+use crate::howl::howl;
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec};
@@ -35,9 +37,37 @@ enum Commands {
         go_forwards: Option<bool>,
     },
     /// Print broker metadata.
-    Sniff { broker: String },
-    // TODO Howl {},
-    // TODO Play {},
+    Sniff { broker: String }, // TODO and optionally port and topic
+    Howl {
+        /// Kafka Broker URL, including port
+        broker: String, // TODO and optionally port
+        /// topic prefix to use eg. INSTNAME
+        topic_prefix: String,
+        /// Events per ev44 to simulate
+        #[arg(short, long, default_value = "100")]
+        events_per_message: u32,
+        /// Number of ev44 per frame to simulate
+        #[arg(short, long, default_value = "20")]
+        messages_per_frame: u32,
+        /// Frames per second to simulate
+        #[arg(short, long, default_value = "1")]
+        frames_per_second: u32,
+        /// Frames to take before beginning new run (0 to run forever)
+        #[arg(long, default_value = "0")]
+        frames_per_run: u32,
+        /// Time-of-flight peak (ns)
+        #[arg(long, default_value = "10_000_000")]
+        tof_peak: u32,
+        /// Time-of-flight sigma (ns)
+        #[arg(long, default_value = "2_000_000")]
+        tof_sigma: u32,
+        /// Minimum detector ID
+        #[arg(long, default_value = "0")]
+        det_min: u32,
+        /// Maximum detector ID
+        #[arg(long, default_value = "1000")]
+        det_max: u32,
+    }, // TODO Play {},
 }
 
 fn main() {
@@ -67,7 +97,30 @@ fn main() {
                 timestamp,
             )
         }
-        Commands::Sniff { broker } => sniff(&broker), // Commands::Howl {} => {}
-                                                      // Commands::Play {} => {}
+        Commands::Sniff { broker } => sniff(&broker),
+        Commands::Howl {
+            broker,
+            topic_prefix,
+            events_per_message,
+            messages_per_frame,
+            frames_per_second,
+            frames_per_run,
+            tof_peak,
+            tof_sigma,
+            det_min,
+            det_max,
+        } => howl(
+            broker,
+            topic_prefix,
+            events_per_message,
+            messages_per_frame,
+            frames_per_second,
+            frames_per_run,
+            tof_peak,
+            tof_sigma,
+            det_min,
+            det_max,
+        ),
+        // Commands::Play {} => {}
     }
 }
