@@ -3,16 +3,19 @@ mod consume;
 mod howl;
 mod sniff;
 
+use crate::cli_utils::BrokerAndOptionalTopic;
 use crate::howl::howl;
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
-use cli_utils::{BrokerAndTopic, parse_broker_spec};
+use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
 use log::debug;
 
 #[derive(Parser, Debug)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+    #[command(flatten)]
+    verbosity: clap_verbosity_flag::Verbosity,
 }
 
 #[derive(Subcommand, Debug)]
@@ -37,7 +40,11 @@ enum Commands {
         go_forwards: Option<bool>,
     },
     /// Print broker metadata.
-    Sniff { broker: String }, // TODO and optionally port and topic
+    Sniff {
+        /// The broker to look at metadata. Optionally suffixed with a topic name to filter to that topic.
+        #[arg(value_parser = parse_broker_spec_optional_topic)]
+        broker: BrokerAndOptionalTopic,
+    },
     Howl {
         /// Kafka Broker URL, including port
         broker: String, // TODO and optionally port
@@ -56,10 +63,10 @@ enum Commands {
         #[arg(long, default_value = "0")]
         frames_per_run: u32,
         /// Time-of-flight peak (ns)
-        #[arg(long, default_value = "10_000_000")]
+        #[arg(long, default_value = "10000000")]
         tof_peak: u32,
         /// Time-of-flight sigma (ns)
-        #[arg(long, default_value = "2_000_000")]
+        #[arg(long, default_value = "2000000")]
         tof_sigma: u32,
         /// Minimum detector ID
         #[arg(long, default_value = "0")]
@@ -72,6 +79,10 @@ enum Commands {
 
 fn main() {
     let cli = Cli::parse();
+    env_logger::Builder::new()
+        .filter_level(cli.verbosity.into())
+        .format_timestamp_micros()
+        .init();
 
     match cli.command {
         Commands::Consume {

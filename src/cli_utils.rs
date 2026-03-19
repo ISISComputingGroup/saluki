@@ -1,20 +1,37 @@
-pub(crate) fn parse_broker_spec(s: &str) -> Result<BrokerAndTopic, String> {
-    let (host_port, topic) = s.split_once('/').ok_or("Missing '/' separating topic")?;
+use anyhow::{Context, Result, bail};
 
-    let (host, port_str) = host_port
-        .rsplit_once(':')
-        .ok_or("Missing ':' separating host and port")?;
+pub(crate) fn parse_broker_spec(s: &str) -> Result<BrokerAndTopic> {
+    let b = parse_broker_spec_optional_topic(&s)?;
 
-    let port = port_str.parse::<u16>().map_err(|_| "Invalid port number")?;
-
-    if topic.is_empty() {
-        return Err("Topic cannot be empty".into());
+    if b.topic.is_none() {
+        bail!("Topic cannot be empty");
     }
 
     Ok(BrokerAndTopic {
+        host: b.host.to_string(),
+        port: b.port,
+        topic: b.topic.unwrap(),
+    })
+}
+
+pub(crate) fn parse_broker_spec_optional_topic(s: &str) -> Result<BrokerAndOptionalTopic> {
+    let (host_port, topic) = match s.split_once('/') {
+        Some((l, r)) => (l.to_string(), Some(r.to_string())),
+        None => (s.to_string(), None),
+    };
+
+    let (host, port_str) = host_port
+        .rsplit_once(':')
+        .context("Missing ':' separating host and port")?;
+
+    let port = port_str
+        .parse::<u16>()
+        .with_context(|| "Invalid port number")?;
+
+    Ok(BrokerAndOptionalTopic {
         host: host.to_string(),
         port,
-        topic: topic.to_string(),
+        topic,
     })
 }
 
@@ -26,6 +43,19 @@ pub struct BrokerAndTopic {
 }
 
 impl BrokerAndTopic {
+    pub(crate) fn broker(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BrokerAndOptionalTopic {
+    pub host: String,
+    pub port: u16,
+    pub topic: Option<String>,
+}
+
+impl BrokerAndOptionalTopic {
     pub(crate) fn broker(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
