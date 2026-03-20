@@ -1,0 +1,4 @@
+name: rust.yaml
+on: push
+
+jobs:
