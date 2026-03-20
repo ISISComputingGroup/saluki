@@ -111,7 +111,19 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: String) -> 
     fbb.finished_data()
 }
 
-fn produce_messages( producer: &BaseProducer, fbb: &mut FlatBufferBuilder, topic_prefix: String, events_per_message: i32, messages_per_frame: i32, frames_per_run: i32, tof_peak: i32, tof_sigma: i32, det_min: i32, det_max: i32, current_job_id: String) -> String {
+fn produce_messages(
+    producer: &BaseProducer,
+    fbb: &mut FlatBufferBuilder,
+    topic_prefix: String,
+    events_per_message: i32,
+    messages_per_frame: u32,
+    frames_per_run: u32,
+    tof_peak: f32,
+    tof_sigma: f32,
+    det_min: i32,
+    det_max: i32,
+    current_job_id: String,
+) -> String {
     // get currnet time
 
     // generate fake events
@@ -241,7 +253,19 @@ pub fn howl(
         target_time += target_frame_time;
         frames += 1;
 
-        current_job_id = produce_messages(&producer, &mut fbb, );
+        current_job_id = produce_messages(
+            &producer,
+            &mut fbb,
+            topic_prefix,
+            events_per_message,
+            messages_per_frame,
+            frames_per_run,
+            tof_peak,
+            tof_sigma,
+            det_min,
+            det_max,
+            current_job_id,
+        );
 
         let sleep_time = target_time
             - SystemTime::now()
