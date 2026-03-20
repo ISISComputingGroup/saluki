@@ -11,13 +11,14 @@ use isis_streaming_data_types::flatbuffers_generated::run_start_pl72::{
     finish_run_start_buffer,
 };
 use isis_streaming_data_types::flatbuffers_generated::run_stop_6s4t::{
-    RunStop, RunStopArgs, finish_run_stop_buffer
+    RunStop, RunStopArgs, finish_run_stop_buffer,
 };
 use log::{debug, warn};
 use rand::{Rng, RngExt, rng};
 use rand_distr::{Distribution, Normal};
 use rdkafka::ClientConfig;
 use rdkafka::producer::{BaseProducer, BaseRecord};
+use serde_json::json;
 use uuid::Uuid;
 
 fn generate_run_start<'a>(
@@ -32,6 +33,34 @@ fn generate_run_start<'a>(
         detector_id: Some(fbb.create_vector(&(0..=det_max).collect::<Vec<_>>())),
         n_spectra: det_max,
     };
+    let events_topic = format!("{topic_prefix}_rawEvents");
+
+    let nexus_structure = json!( {
+        "children": [
+            {
+                "type": "group",
+                "name": "raw_data_1",
+                "children": [
+                    {
+                        "type": "group",
+                        "name": "events",
+                        "children": [
+                            {
+                                "type": "stream",
+                                "stream": {
+                                    "topic": events_topic,
+                                    "source": "saluki_howl",
+                                    "writer_module": "ev44",
+                                },
+                            },
+                        ],
+                        "attributes": [{"name": "NX_class", "values": "NXentry"}],
+                    },
+                ],
+                "attributes": [{"name": "NX_class", "values": "NXentry"}],
+            }
+        ]
+    });
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
     let file_name = Uuid::new_v4().to_string();
@@ -47,7 +76,7 @@ fn generate_run_start<'a>(
         stop_time: 0, // TODO check this
         run_name: Some(fbb.create_string(run_name.as_str())),
         instrument_name: Some(fbb.create_string("saluki-howl")),
-        nexus_structure: Some(fbb.create_string("")), // TODO
+        nexus_structure: Some(fbb.create_string(nexus_structure.to_string().as_str())), // TODO
         job_id: Some(fbb.create_string(job_id.as_str())),
         broker: None,
         service_id: None,
@@ -63,7 +92,24 @@ fn generate_run_start<'a>(
     fbb.finished_data()
 }
 
-fn generate_run_stop() {}
+fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: String) -> &'a [u8] {
+    fbb.reset();
+    let stop_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+
+    let run_stop_args = RunStopArgs {
+        stop_time: stop_time as u64,
+        run_name: None,
+        job_id: Some(fbb.create_string(job_id.as_str())),
+        service_id: None,
+        command_id: None,
+    };
+    let run_stop_buf = RunStop::create(fbb, &run_stop_args);
+    finish_run_stop_buffer(fbb, run_stop_buf);
+    fbb.finished_data()
+}
 
 fn produce_messages() {}
 
@@ -156,7 +202,6 @@ pub fn howl(
     let mut current_job_id = Uuid::new_v4().to_string();
 
     let runinfo_topic = format!("{topic_prefix}_runInfo");
-    let events_topic = format!("{topic_prefix}_rawEvents");
 
     producer
         .send(

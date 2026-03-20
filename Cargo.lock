@@ -734,6 +734,7 @@ dependencies = [
  "rand_distr",
  "rdkafka",
  "rstest",
+ "serde_json",
  "uuid",
 ]
 
