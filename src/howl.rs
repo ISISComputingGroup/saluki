@@ -111,7 +111,21 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: String) -> 
     fbb.finished_data()
 }
 
-fn produce_messages() {}
+fn produce_messages( producer: &BaseProducer, fbb: &mut FlatBufferBuilder, topic_prefix: String, events_per_message: i32, messages_per_frame: i32, frames_per_run: i32, tof_peak: i32, tof_sigma: i32, det_min: i32, det_max: i32, current_job_id: String) -> String {
+    // get currnet time
+
+    // generate fake events
+
+    // for x in range(messages_per_frame)
+
+    // poll producer
+
+    // create run stop + start if frames_per_run > 0 and  frame % frames_per_run == 0
+
+    // return current job id
+
+    current_job_id
+}
 
 fn generate_fake_events<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
@@ -227,7 +241,7 @@ pub fn howl(
         target_time += target_frame_time;
         frames += 1;
 
-        // current_job_id = produce_messages()
+        current_job_id = produce_messages(&producer, &mut fbb, );
 
         let sleep_time = target_time
             - SystemTime::now()
