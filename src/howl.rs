@@ -126,15 +126,30 @@ fn produce_messages(
     current_job_id: String,
 ) -> String {
     // get currnet time
-    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as f32;
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as f32;
 
     for _ in 0..messages_per_frame {
-        match producer.send( BaseRecord::to(format!("{topic_prefix}_rawEvents").as_str())
-                                           .key("")
-                                           .payload(generate_fake_events( fbb, frame, events_per_message, tof_peak, tof_sigma, det_min, det_max, now)),
+        match producer.send(
+            BaseRecord::to(format!("{topic_prefix}_rawEvents").as_str())
+                .key("")
+                .payload(generate_fake_events(
+                    fbb,
+                    frame,
+                    events_per_message,
+                    tof_peak,
+                    tof_sigma,
+                    det_min,
+                    det_max,
+                    now,
+                )),
         ) {
             Ok(_) => {}
-            Err(err) => {warn!("Failed to send messages: {}", err.0.to_string());}
+            Err(err) => {
+                warn!("Failed to send messages: {}", err.0.to_string());
+            }
         }
     }
 
@@ -278,17 +293,23 @@ pub fn howl(
             det_max,
             current_job_id.clone(),
         );
-        let sleep_time = target_time
-            - SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap();
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap();
 
-        if sleep_time.as_millis() > 0 {
+        debug!("Current time: {now:?}");
+        debug!("Target time: {target_time:?}");
+
+        // debug!("Sleep time: {}", sleep_time);
+
+        if target_time > now {
+            let sleep_time = target_time - now;
             thread::sleep(sleep_time);
         } else {
+            let behind = now - target_time;
             warn!(
                 "saluki howl running {} seconds behind schedule",
-                sleep_time.as_secs()
+                behind.as_secs()
             )
         }
     }
