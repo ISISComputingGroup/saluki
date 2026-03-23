@@ -300,16 +300,14 @@ pub fn howl(
         debug!("Current time: {now:?}");
         debug!("Target time: {target_time:?}");
 
-        // debug!("Sleep time: {}", sleep_time);
-
         if target_time > now {
             let sleep_time = target_time - now;
             thread::sleep(sleep_time);
         } else {
             let behind = now - target_time;
             warn!(
-                "saluki howl running {} seconds behind schedule",
-                behind.as_secs()
+                "saluki howl running {} ms behind schedule",
+                behind.as_millis()
             )
         }
     }
