@@ -73,14 +73,14 @@ fn generate_run_start<'a>(
 
     let run_start_args = RunStartArgs {
         start_time: start_time as u64,
-        stop_time: 0, // TODO check this
-        run_name: Some(fbb.create_string(run_name.as_str())),
+        stop_time: 0, // TODO check this - it's optional so not necessarily 0
+        run_name: Some(fbb.create_string(&run_name)),
         instrument_name: Some(fbb.create_string("saluki-howl")),
-        nexus_structure: Some(fbb.create_string(nexus_structure.to_string().as_str())), // TODO
-        job_id: Some(fbb.create_string(job_id.as_str())),
+        nexus_structure: Some(fbb.create_string(&nexus_structure.to_string())),
+        job_id: Some(fbb.create_string(&job_id)),
         broker: None,
         service_id: None,
-        filename: Some(fbb.create_string(file_name.as_str())),
+        filename: Some(fbb.create_string(&file_name)),
         n_periods: 1,
         detector_spectrum_map: Some(det_spec_map_buf),
         metadata: None,
@@ -114,6 +114,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: String) -> 
 fn produce_messages(
     producer: &BaseProducer,
     fbb: &mut FlatBufferBuilder,
+    frame: i64,
     topic_prefix: String,
     events_per_message: i32,
     messages_per_frame: u32,
@@ -125,12 +126,19 @@ fn produce_messages(
     current_job_id: String,
 ) -> String {
     // get currnet time
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as f32;
 
-    // generate fake events
+    for _ in 0..messages_per_frame {
+        match producer.send( BaseRecord::to(format!("{topic_prefix}_rawEvents").as_str())
+                                           .key("")
+                                           .payload(generate_fake_events( fbb, frame, events_per_message, tof_peak, tof_sigma, det_min, det_max, now)),
+        ) {
+            Ok(_) => {}
+            Err(err) => {warn!("Failed to send messages: {}", err.0.to_string());}
+        }
+    }
 
-    // for x in range(messages_per_frame)
-
-    // poll producer
+    producer.poll(Duration::from_secs(0));
 
     // create run stop + start if frames_per_run > 0 and  frame % frames_per_run == 0
 
@@ -236,27 +244,31 @@ pub fn howl(
                 .payload(generate_run_start(
                     &mut fbb,
                     det_max,
-                    topic_prefix,
-                    current_job_id,
+                    topic_prefix.clone(),
+                    current_job_id.clone(),
                 )),
         )
         .expect("Failed to enqueue run start message");
 
-    let target_frame_time = Duration::from_secs((1 / frames_per_second) as u64);
+    let target_frame_time = Duration::from_secs_f64(1.0 / frames_per_second as f64);
+    debug!("Target frame time: {target_frame_time:?}");
 
-    let mut frames: u64 = 0;
+    let mut frames: i64 = 0;
 
     let mut target_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
+    debug!("Target time: {target_time:?}");
     loop {
         target_time += target_frame_time;
+        debug!("New target: {target_time:?}");
         frames += 1;
 
         current_job_id = produce_messages(
             &producer,
             &mut fbb,
-            topic_prefix,
+            frames,
+            topic_prefix.clone(),
             events_per_message,
             messages_per_frame,
             frames_per_run,
@@ -264,9 +276,8 @@ pub fn howl(
             tof_sigma,
             det_min,
             det_max,
-            current_job_id,
+            current_job_id.clone(),
         );
-
         let sleep_time = target_time
             - SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
