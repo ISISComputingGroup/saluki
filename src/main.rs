@@ -121,8 +121,8 @@ fn main() {
             det_min,
             det_max,
         } => howl(
-            broker,
-            topic_prefix,
+            &broker,
+            &topic_prefix,
             events_per_message,
             messages_per_frame,
             frames_per_second,

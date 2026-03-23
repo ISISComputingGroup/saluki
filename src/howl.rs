@@ -2,7 +2,6 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use flatbuffers::FlatBufferBuilder;
-use isis_streaming_data_types::flatbuffers_generated::det_spec_map_df12::SPECTRA_DETECTOR_MAPPING_IDENTIFIER;
 use isis_streaming_data_types::flatbuffers_generated::events_ev44::{
     Event44Message, Event44MessageArgs, finish_event_44_message_buffer,
 };
@@ -13,8 +12,8 @@ use isis_streaming_data_types::flatbuffers_generated::run_start_pl72::{
 use isis_streaming_data_types::flatbuffers_generated::run_stop_6s4t::{
     RunStop, RunStopArgs, finish_run_stop_buffer,
 };
-use log::{debug, warn};
-use rand::{Rng, RngExt, rng};
+use log::{debug, error, warn};
+use rand::{RngExt, rng};
 use rand_distr::{Distribution, Normal};
 use rdkafka::ClientConfig;
 use rdkafka::producer::{BaseProducer, BaseRecord};
@@ -24,8 +23,8 @@ use uuid::Uuid;
 fn generate_run_start<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
     det_max: i32,
-    topic_prefix: String,
-    job_id: String,
+    topic_prefix: &str,
+    job_id: &str,
 ) -> &'a [u8] {
     fbb.reset();
     let args = SpectraDetectorMappingArgs {
@@ -92,7 +91,7 @@ fn generate_run_start<'a>(
     fbb.finished_data()
 }
 
-fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: String) -> &'a [u8] {
+fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'a [u8] {
     fbb.reset();
     let stop_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -102,7 +101,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: String) -> 
     let run_stop_args = RunStopArgs {
         stop_time: stop_time as u64,
         run_name: None,
-        job_id: Some(fbb.create_string(job_id.as_str())),
+        job_id: Some(fbb.create_string(&job_id)),
         service_id: None,
         command_id: None,
     };
@@ -115,7 +114,7 @@ fn produce_messages(
     producer: &BaseProducer,
     fbb: &mut FlatBufferBuilder,
     frame: i64,
-    topic_prefix: String,
+    topic_prefix: &str,
     events_per_message: i32,
     messages_per_frame: u32,
     frames_per_run: u32,
@@ -148,7 +147,7 @@ fn produce_messages(
         ) {
             Ok(_) => {}
             Err(err) => {
-                warn!("Failed to send messages: {}", err.0.to_string());
+                error!("Failed to send messages: {}", err.0);
             }
         }
     }
@@ -198,8 +197,8 @@ fn generate_fake_events<'a>(
 }
 
 pub fn howl(
-    broker: String,
-    topic_prefix: String,
+    broker: &str,
+    topic_prefix: &str,
     events_per_message: i32,
     messages_per_frame: u32,
     frames_per_second: u32,
@@ -210,7 +209,6 @@ pub fn howl(
     det_max: i32,
 ) {
     // create producer
-
     let mut fbb = FlatBufferBuilder::new();
 
     let now = SystemTime::now()
@@ -259,8 +257,8 @@ pub fn howl(
                 .payload(generate_run_start(
                     &mut fbb,
                     det_max,
-                    topic_prefix.clone(),
-                    current_job_id.clone(),
+                    topic_prefix,
+                    &current_job_id,
                 )),
         )
         .expect("Failed to enqueue run start message");
@@ -283,7 +281,7 @@ pub fn howl(
             &producer,
             &mut fbb,
             frames,
-            topic_prefix.clone(),
+            &topic_prefix,
             events_per_message,
             messages_per_frame,
             frames_per_run,
@@ -291,7 +289,7 @@ pub fn howl(
             tof_sigma,
             det_min,
             det_max,
-            current_job_id.clone(),
+            current_job_id,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
