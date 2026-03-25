@@ -13,19 +13,20 @@ alternatively you can `pip install saluki` and run it from a `venv`.
 
 See `saluki --help` for all options. 
 
-## `listen` - Listen to a topic for updates
-`saluki listen mybroker:9092/mytopic` - This will listen for updates for `mytopic` on `mybroker`. 
+## `consume`- Consume from a topic
+> [!NOTE]
+> An alias for `saluki listen` exists for `consume` - the two commands were merged when `saluki` was rewritten in rust. 
+
+This continuously listens to a topic, deserialises messages and prints them.
+
+It can also be given a `--messages` flag to limit the number of messages to print:
+`saluki consume mybroker:9092/mytopic -p 1 -o 123456 -m 10` - This will print 9 messages before (and inclusively the offset specified) offset `123456` of `mytopic` on `mybroker`, in partition 1.
+
+Use the `--last` flag to consume the last `x` messages on the topic, ie. `saluki consume mybroker:9092/mytopic --last 5` will print the last 5 messages.
 
 ### Filter to specific schemas
 
-`saluki listen mybroker:9092/mytopic -f f144 -f f142` - This will listen for updates but ignore messages with schema IDs of `f142` or `f144`
-
-## `consume`- Consume from a topic
-`saluki consume mybroker:9092/mytopic -p 1 -o 123456 -m 10` - This will print 9 messages before (and inclusively the offset specified) offset `123456` of `mytopic` on `mybroker`, in partition 1.
-
-Use the `-g` flag to go the other way, ie. in the above example to consume the 9 messages _after_ offset 123456
-
-You can also filter out messages to specific schema(s) with the `-f` flag, like the example above for `listen`.
+`saluki consume mybroker:9092/mytopic -f f144` - This will listen for updates but ignore messages with schema IDs of `f144`
 
 ## `sniff` - List all topics and their high, low watermarks and number of messages
 `saluki sniff mybroker:9092`
@@ -50,6 +51,9 @@ INFO:saluki:            0 - low:7515, high:7551, num_messages:36
 ```
 
 ## `play` - Replay data from one topic to another
+
+> [!IMPORTANT]
+> This functionality was not ported over when `saluki` was rewritten in rust. [this issue](https://github.com/ISISComputingGroup/saluki/issues/50) exists to do so. 
 
 ### Between offsets
 

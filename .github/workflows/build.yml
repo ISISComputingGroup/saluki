@@ -1,0 +1,70 @@
+name: Build
+on: [push, workflow_call]
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ "ubuntu-latest", "windows-latest" ]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+      - name: install stable rust
+        run: rustup install stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
+      - name: install curl-dev
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install -y libcurl4-openssl-dev
+      - name: Unit tests
+        run: cargo test
+      - name: Unit tests (release mode)
+        run: cargo test --release
+      - name: Build (debug)
+        run: cargo build
+      - name: Build (release)
+        run: cargo build --release
+      - name: Format check
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy -- --deny warnings
+      - name: Upload artifacts (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ format('debug-{0}', matrix.os) }}
+          path: |
+            target/debug/saluki
+            target/debug/saluki.exe
+            target/debug/saluki.pdb
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload artifacts (release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ format('release-{0}', matrix.os) }}
+          path: |
+            target/release/saluki
+            target/release/saluki.exe
+            target/release/saluki.pdb
+          if-no-files-found: error
+          retention-days: 1
+  results:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: Final Results
+    needs: [tests]
+    steps:
+      - run: exit 1
+        # see https://stackoverflow.com/a/67532120/4907315
+        if: >-
+          ${{
+               contains(needs.*.result, 'failure')
+            || contains(needs.*.result, 'cancelled')
+          }}
