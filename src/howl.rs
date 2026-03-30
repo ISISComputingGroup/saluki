@@ -68,7 +68,7 @@ fn generate_run_start<'a>(
 
     let start_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .expect("Failed to get system time")
         .as_millis();
 
     let run_start_args = RunStartArgs {
@@ -96,7 +96,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
     fbb.reset();
     let stop_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .expect("Failed to get system time")
         .as_millis();
 
     let run_stop_args = RunStopArgs {
@@ -130,7 +130,7 @@ fn produce_messages(
     // get current time
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .expect("Failed to get system time")
         .as_millis() as f32;
 
     for _ in 0..messages_per_frame {
@@ -207,7 +207,7 @@ fn generate_fake_events<'a>(
         .map(|_| rng.random_range(det_min..=det_max))
         .collect();
 
-    let normal = Normal::new(tof_peak, tof_sigma).unwrap();
+    let normal = Normal::new(tof_peak, tof_sigma).expect("Failed to generate normal distribution");
     let tofs: Vec<i32> = (0..events_per_message)
         .map(|_| normal.sample(rng) as i32)
         .collect();
@@ -244,7 +244,7 @@ pub fn howl(
 
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .expect("Failed to get system time")
         .as_millis() as f32;
     let ev44_size = generate_fake_events(
         &mut fbb,
@@ -302,7 +302,7 @@ pub fn howl(
 
     let mut target_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
+        .expect("Failed to get system time");
     debug!("Target time: {target_time:?}");
     loop {
         target_time += target_frame_time;
@@ -326,7 +326,7 @@ pub fn howl(
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap();
+            .expect("Failed to get system time");
 
         debug!("Current time: {now:?}");
         debug!("Target time: {target_time:?}");

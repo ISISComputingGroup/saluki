@@ -48,10 +48,10 @@ pub fn consume(
         start = Some(
             consumer
                 .offsets_for_times(tpl, Duration::from_secs(1))
-                .expect("Failed to get offset for time: {timestamp}")
+                .expect("Failed to get offset for time")
                 .elements()
                 .first()
-                .unwrap()
+                .expect("No topics found for timestamp")
                 .offset(),
         );
     } else if let Some(_offset) = offset {
