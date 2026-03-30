@@ -14,7 +14,7 @@ pub fn consume(
     num_messages: Option<i64>,
     offset: Option<i64>,
     last: Option<i64>,
-    timestamp: Option<u64>,
+    timestamp: Option<i64>,
 ) {
     debug!(
         "Listening to topic: {} partition {:?} on broker {}:{}, filtering {}",
@@ -37,9 +37,14 @@ pub fn consume(
         .unwrap_or_else(|_| panic!("Failed to get watermarks for topic {}", topic.topic));
     let num_messages_on_topic = high_watermark - low_watermark;
 
-    if timestamp.is_some() {
+    if let Some(_timestamp) = timestamp {
         let mut tpl = TopicPartitionList::new();
-        tpl.add_partition(&topic.topic, partition.unwrap_or(0));
+        tpl.add_partition_offset(
+            &topic.topic,
+            partition.unwrap_or(0),
+            Offset::Offset(_timestamp),
+        )
+        .expect("Can't add partition to consumer with timestamp");
         start = Some(
             consumer
                 .offsets_for_times(tpl, Duration::from_secs(1))
@@ -49,12 +54,12 @@ pub fn consume(
                 .unwrap()
                 .offset(),
         );
-    } else if offset.is_some() {
+    } else if let Some(_offset) = offset {
         assert!(
-            offset.unwrap() >= low_watermark && offset.unwrap() <= high_watermark,
-            "offset ({offset:?}) must be between high ({high_watermark}) and low({low_watermark}) watermarks"
+            _offset >= low_watermark && _offset <= high_watermark,
+            "offset ({_offset:?}) must be between high ({high_watermark}) and low({low_watermark}) watermarks"
         );
-        start = Some(Offset::Offset(offset.unwrap()));
+        start = Some(Offset::Offset(_offset));
     } else if let Some(last_num_messages) = last {
         assert!(
             last_num_messages <= num_messages_on_topic,
@@ -81,7 +86,7 @@ pub fn consume(
     for message in consumer.iter() {
         match message {
             Ok(message) => {
-                if partition.is_some() && message.partition() != partition.unwrap() {
+                if Some(message.partition()) != partition {
                     continue;
                 }
 
@@ -113,10 +118,8 @@ pub fn consume(
             }
         }
         counter += 1;
-        if (num_messages.is_some() && counter == num_messages.unwrap())
-            || (last.is_some() && counter == last.unwrap())
-        {
-            info!("Reached {} messages, exiting", num_messages.unwrap());
+        if Some(counter) == num_messages || Some(counter) == last {
+            info!("Reached {} messages, exiting", counter);
             break;
         }
     }

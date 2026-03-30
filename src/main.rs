@@ -32,7 +32,7 @@ enum Commands {
         filter: Option<String>,
         /// Timestamp to consume from
         #[arg(short, long, conflicts_with = "offset")]
-        timestamp: Option<u64>,
+        timestamp: Option<i64>,
         /// Offset to consume from
         #[arg(short, long, conflicts_with = "timestamp")]
         offset: Option<i64>,
