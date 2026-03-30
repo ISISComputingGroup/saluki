@@ -86,7 +86,7 @@ pub fn consume(
     for message in consumer.iter() {
         match message {
             Ok(message) => {
-                if Some(message.partition()) != partition {
+                if partition.is_some() && Some(message.partition()) != partition {
                     continue;
                 }
 

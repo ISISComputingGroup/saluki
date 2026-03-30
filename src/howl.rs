@@ -119,10 +119,12 @@ fn produce_messages(
     current_job_id: &mut String,
 ) {
     // get current time
-    let now = SystemTime::now()
+    let now_nanos = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Failed to get system time")
-        .as_secs();
+        .as_nanos()
+        .try_into()
+        .expect("This will fail after April 11th, 2262");
 
     for _ in 0..conf.messages_per_frame {
         match producer.send(
@@ -133,8 +135,9 @@ fn produce_messages(
                     rng,
                     frame,
                     conf.event_message_config,
-                    now,
-                )),
+                    now_nanos,
+                ))
+                .timestamp(now_nanos / 1_000_000),
         ) {
             Ok(_) => {}
             Err(err) => {
@@ -148,14 +151,17 @@ fn produce_messages(
             "Starting new run after {} simulated frames",
             conf.frames_per_run
         );
-        match producer.send(BaseRecord::to(conf.run_info_topic).key("").payload(
-            generate_run_start(
-                fbb,
-                conf.event_message_config.det_max,
-                conf.event_topic,
-                current_job_id,
-            ),
-        )) {
+        match producer.send(
+            BaseRecord::to(conf.run_info_topic)
+                .key("")
+                .payload(generate_run_start(
+                    fbb,
+                    conf.event_message_config.det_max,
+                    conf.event_topic,
+                    current_job_id,
+                ))
+                .timestamp(now_nanos / 1_000_000),
+        ) {
             Ok(_) => {}
             Err(err) => {
                 error!("Failed to send run start: {}", err.0);
@@ -165,7 +171,8 @@ fn produce_messages(
         match producer.send(
             BaseRecord::to(conf.run_info_topic)
                 .key("")
-                .payload(generate_run_stop(fbb, current_job_id)),
+                .payload(generate_run_stop(fbb, current_job_id))
+                .timestamp(now_nanos / 1_000_000),
         ) {
             Ok(_) => {}
             Err(err) => {
@@ -188,7 +195,7 @@ fn generate_fake_events<'a>(
     rng: &mut ThreadRng,
     msg_id: u32,
     conf: &EventMessageConfig,
-    timestamp: u64,
+    timestamp_ns: i64,
 ) -> &'a [u8] {
     fbb.reset();
 
@@ -205,7 +212,7 @@ fn generate_fake_events<'a>(
     let args = Event44MessageArgs {
         source_name: Some(fbb.create_string("saluki")),
         message_id: msg_id as i64,
-        reference_time: Some(fbb.create_vector(&[(timestamp * 1_000_000_000) as i64])),
+        reference_time: Some(fbb.create_vector(&[timestamp_ns])),
         reference_time_index: Some(fbb.create_vector(&[0])),
         time_of_flight: Some(fbb.create_vector(&tofs)),
         pixel_id: Some(fbb.create_vector(&det_ids)),
@@ -230,12 +237,15 @@ pub fn howl(conf: &HowlConfig) {
     let mut fbb = FlatBufferBuilder::new();
     let mut rng = rand::rng();
 
-    let now = SystemTime::now()
+    let now_nanos = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Failed to get system time")
-        .as_secs();
+        .as_nanos()
+        .try_into()
+        .expect("This will fail after April 11th, 2262");
     let ev44_size =
-        generate_fake_events(&mut fbb, &mut rng, 0, conf.event_message_config, now).len() as u32;
+        generate_fake_events(&mut fbb, &mut rng, 0, conf.event_message_config, now_nanos).len()
+            as u32;
 
     debug!("ev44 size is {ev44_size} bytes");
 
@@ -243,7 +253,7 @@ pub fn howl(conf: &HowlConfig) {
     let rate_bytes_per_sec = ev44_size * conf.messages_per_frame * conf.frames_per_second;
     debug!("bytes per second: {rate_bytes_per_sec}");
 
-    let rate_mbit_per_sec = (rate_bytes_per_sec as f64 / (1024.*1024.)) * 8.0;
+    let rate_mbit_per_sec = (rate_bytes_per_sec as f64 / (1024. * 1024.)) * 8.0;
     let rate_mebibits_per_sec = rate_mbit_per_sec / 8.0;
     debug!("rate mbit per sec: {rate_mbit_per_sec}");
     println!(
@@ -267,7 +277,8 @@ pub fn howl(conf: &HowlConfig) {
                     conf.event_message_config.det_max,
                     conf.event_topic,
                     &current_job_id,
-                )),
+                ))
+                .timestamp(now_nanos / 1_000_000),
         )
         .expect("Failed to enqueue run start message");
 
