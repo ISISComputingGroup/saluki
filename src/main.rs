@@ -4,7 +4,7 @@ mod howl;
 mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
-use crate::howl::howl;
+use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
@@ -112,18 +112,21 @@ fn main() {
             tof_sigma,
             det_min,
             det_max,
-        } => howl(
-            &broker,
-            &topic_prefix,
-            events_per_message,
+        } => howl(&HowlConfig {
+            broker: &broker,
+            event_topic: &format!("{topic_prefix}_rawEvents"),
+            run_info_topic: &format!("{topic_prefix}_runInfo"),
             messages_per_frame,
             frames_per_second,
             frames_per_run,
-            tof_peak,
-            tof_sigma,
-            det_min,
-            det_max,
-        ),
+            event_message_config: &EventMessageConfig {
+                events_per_message,
+                tof_peak,
+                tof_sigma,
+                det_min,
+                det_max,
+            },
+        }),
         // Commands::Play {} => {}
     }
 }

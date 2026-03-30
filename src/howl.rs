@@ -24,7 +24,7 @@ use uuid::Uuid;
 fn generate_run_start<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
     det_max: i32,
-    topic_prefix: &str,
+    event_topic: &str,
     job_id: &str,
 ) -> &'a [u8] {
     fbb.reset();
@@ -33,7 +33,6 @@ fn generate_run_start<'a>(
         detector_id: Some(fbb.create_vector(&(0..=det_max).collect::<Vec<_>>())),
         n_spectra: det_max,
     };
-    let events_topic = format!("{topic_prefix}_rawEvents");
 
     let nexus_structure = json!( {
         "children": [
@@ -48,7 +47,7 @@ fn generate_run_start<'a>(
                             {
                                 "type": "stream",
                                 "stream": {
-                                    "topic": events_topic,
+                                    "topic": event_topic,
                                     "source": "saluki_howl",
                                     "writer_module": "ev44",
                                 },
@@ -111,20 +110,12 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
     fbb.finished_data()
 }
 
-#[allow(clippy::too_many_arguments)]
 fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
     frame: u32,
-    topic_prefix: &str,
-    events_per_message: i32,
-    messages_per_frame: u32,
-    frames_per_run: u32,
-    tof_peak: f32,
-    tof_sigma: f32,
-    det_min: i32,
-    det_max: i32,
+    conf: &HowlConfig,
     current_job_id: &mut String,
 ) {
     // get current time
@@ -133,19 +124,15 @@ fn produce_messages(
         .expect("Failed to get system time")
         .as_millis() as f32;
 
-    for _ in 0..messages_per_frame {
+    for _ in 0..conf.messages_per_frame {
         match producer.send(
-            BaseRecord::to(&format!("{topic_prefix}_rawEvents"))
+            BaseRecord::to(conf.event_topic)
                 .key("")
                 .payload(generate_fake_events(
                     fbb,
                     rng,
                     frame,
-                    events_per_message,
-                    tof_peak,
-                    tof_sigma,
-                    det_min,
-                    det_max,
+                    conf.event_message_config,
                     now,
                 )),
         ) {
@@ -156,18 +143,19 @@ fn produce_messages(
         }
     }
 
-    if frames_per_run > 0 && frame.is_multiple_of(frames_per_run) {
-        info!("Starting new run after {frames_per_run} simulated frames");
-        match producer.send(
-            BaseRecord::to(&format!("{topic_prefix}_runInfo"))
-                .key("")
-                .payload(generate_run_start(
-                    fbb,
-                    det_max,
-                    topic_prefix,
-                    current_job_id,
-                )),
-        ) {
+    if conf.frames_per_run > 0 && frame.is_multiple_of(conf.frames_per_run) {
+        info!(
+            "Starting new run after {} simulated frames",
+            conf.frames_per_run
+        );
+        match producer.send(BaseRecord::to(conf.run_info_topic).key("").payload(
+            generate_run_start(
+                fbb,
+                conf.event_message_config.det_max,
+                conf.event_topic,
+                current_job_id,
+            ),
+        )) {
             Ok(_) => {}
             Err(err) => {
                 error!("Failed to send run start: {}", err.0);
@@ -175,7 +163,7 @@ fn produce_messages(
         }
         *current_job_id = Uuid::new_v4().to_string();
         match producer.send(
-            BaseRecord::to(&format!("{topic_prefix}_runInfo"))
+            BaseRecord::to(conf.run_info_topic)
                 .key("")
                 .payload(generate_run_stop(fbb, current_job_id)),
         ) {
@@ -187,26 +175,30 @@ fn produce_messages(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+pub struct EventMessageConfig {
+    pub events_per_message: i32,
+    pub tof_peak: f32,
+    pub tof_sigma: f32,
+    pub det_min: i32,
+    pub det_max: i32,
+}
+
 fn generate_fake_events<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
     rng: &mut ThreadRng,
     msg_id: u32,
-    events_per_message: i32,
-    tof_peak: f32,
-    tof_sigma: f32,
-    det_min: i32,
-    det_max: i32,
+    conf: &EventMessageConfig,
     timestamp: f32,
 ) -> &'a [u8] {
     fbb.reset();
 
-    let det_ids: Vec<i32> = (0..events_per_message)
-        .map(|_| rng.random_range(det_min..=det_max))
+    let det_ids: Vec<i32> = (0..conf.events_per_message)
+        .map(|_| rng.random_range(conf.det_min..=conf.det_max))
         .collect();
 
-    let normal = Normal::new(tof_peak, tof_sigma).expect("Failed to generate normal distribution");
-    let tofs: Vec<i32> = (0..events_per_message)
+    let normal =
+        Normal::new(conf.tof_peak, conf.tof_sigma).expect("Failed to generate normal distribution");
+    let tofs: Vec<i32> = (0..conf.events_per_message)
         .map(|_| normal.sample(rng) as i32)
         .collect();
 
@@ -223,19 +215,17 @@ fn generate_fake_events<'a>(
     fbb.finished_data()
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn howl(
-    broker: &str,
-    topic_prefix: &str,
-    events_per_message: i32,
-    messages_per_frame: u32,
-    frames_per_second: u32,
-    frames_per_run: u32,
-    tof_peak: f32,
-    tof_sigma: f32,
-    det_min: i32,
-    det_max: i32,
-) {
+pub struct HowlConfig<'a> {
+    pub broker: &'a str,
+    pub event_topic: &'a str,
+    pub run_info_topic: &'a str,
+    pub messages_per_frame: u32,
+    pub frames_per_second: u32,
+    pub frames_per_run: u32,
+    pub event_message_config: &'a EventMessageConfig,
+}
+
+pub fn howl(conf: &HowlConfig) {
     // create producer
     let mut fbb = FlatBufferBuilder::new();
     let mut rng = rand::rng();
@@ -244,23 +234,13 @@ pub fn howl(
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Failed to get system time")
         .as_millis() as f32;
-    let ev44_size = generate_fake_events(
-        &mut fbb,
-        &mut rng,
-        0,
-        events_per_message,
-        tof_peak,
-        tof_sigma,
-        det_min,
-        det_max,
-        now,
-    )
-    .len() as u32;
+    let ev44_size =
+        generate_fake_events(&mut fbb, &mut rng, 0, conf.event_message_config, now).len() as u32;
 
     debug!("ev44 size is {ev44_size} bytes");
 
     // calculate rate
-    let rate_bytes_per_sec = ev44_size * messages_per_frame * frames_per_second;
+    let rate_bytes_per_sec = ev44_size * conf.messages_per_frame * conf.frames_per_second;
     debug!("bytes per second: {rate_bytes_per_sec}");
 
     let rate_mbit_per_sec: f32 = (rate_bytes_per_sec as f32 / 1024f32.powf(2.0)) * 8.0;
@@ -272,28 +252,26 @@ pub fn howl(
     println!("Each ev44 is {ev44_size} bytes");
 
     let producer: ThreadedProducer<DefaultProducerContext> = ClientConfig::new()
-        .set("bootstrap.servers", broker)
+        .set("bootstrap.servers", conf.broker)
         .create()
         .expect("Producer creation error");
 
     let mut current_job_id = Uuid::new_v4().to_string();
 
-    let runinfo_topic = format!("{topic_prefix}_runInfo");
-
     producer
         .send(
-            BaseRecord::to(&runinfo_topic)
+            BaseRecord::to(conf.run_info_topic)
                 .key("")
                 .payload(generate_run_start(
                     &mut fbb,
-                    det_max,
-                    topic_prefix,
+                    conf.event_message_config.det_max,
+                    conf.event_topic,
                     &current_job_id,
                 )),
         )
         .expect("Failed to enqueue run start message");
 
-    let target_frame_time = Duration::from_secs_f64(1.0 / frames_per_second as f64);
+    let target_frame_time = Duration::from_secs_f64(1.0 / conf.frames_per_second as f64);
     debug!("Target frame time: {target_frame_time:?}");
 
     let mut frames: u32 = 0;
@@ -312,14 +290,7 @@ pub fn howl(
             &mut fbb,
             &mut rng,
             frames,
-            topic_prefix,
-            events_per_message,
-            messages_per_frame,
-            frames_per_run,
-            tof_peak,
-            tof_sigma,
-            det_min,
-            det_max,
+            conf,
             &mut current_job_id,
         );
         let now = SystemTime::now()
