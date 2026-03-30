@@ -125,8 +125,8 @@ fn produce_messages(
     tof_sigma: f32,
     det_min: i32,
     det_max: i32,
-    mut current_job_id: String,
-) -> String {
+    current_job_id: &mut String,
+) {
     // get current time
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -173,7 +173,7 @@ fn produce_messages(
                 error!("Failed to send run start: {}", err.0);
             }
         }
-        current_job_id = Uuid::new_v4().to_string();
+        *current_job_id = Uuid::new_v4().to_string();
         match producer.send(
             BaseRecord::to(&format!("{topic_prefix}_runInfo"))
                 .key("")
@@ -185,8 +185,6 @@ fn produce_messages(
             }
         }
     }
-
-    current_job_id
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -308,8 +306,8 @@ pub fn howl(
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
         frames += 1;
-
-        current_job_id = produce_messages(
+        println!("current job id: {current_job_id}");
+        produce_messages(
             &producer,
             &mut fbb,
             &mut rng,
@@ -322,7 +320,7 @@ pub fn howl(
             tof_sigma,
             det_min,
             det_max,
-            current_job_id,
+            &mut current_job_id,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
