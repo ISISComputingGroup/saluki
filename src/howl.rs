@@ -135,7 +135,7 @@ fn produce_messages(
 
     for _ in 0..messages_per_frame {
         match producer.send(
-            BaseRecord::to(format!("{topic_prefix}_rawEvents").as_str())
+            BaseRecord::to(&format!("{topic_prefix}_rawEvents"))
                 .key("")
                 .payload(generate_fake_events(
                     fbb,
@@ -159,7 +159,7 @@ fn produce_messages(
     if frames_per_run > 0 && frame.is_multiple_of(frames_per_run) {
         info!("Starting new run after {frames_per_run} simulated frames");
         match producer.send(
-            BaseRecord::to(format!("{topic_prefix}_runInfo").as_str())
+            BaseRecord::to(&format!("{topic_prefix}_runInfo"))
                 .key("")
                 .payload(generate_run_start(
                     fbb,
@@ -175,7 +175,7 @@ fn produce_messages(
         }
         current_job_id = Uuid::new_v4().to_string();
         match producer.send(
-            BaseRecord::to(format!("{topic_prefix}_runInfo").as_str())
+            BaseRecord::to(&format!("{topic_prefix}_runInfo"))
                 .key("")
                 .payload(generate_run_stop(fbb, &current_job_id)),
         ) {
@@ -284,7 +284,7 @@ pub fn howl(
 
     producer
         .send(
-            BaseRecord::to(runinfo_topic.as_str())
+            BaseRecord::to(&runinfo_topic)
                 .key("")
                 .payload(generate_run_start(
                     &mut fbb,
