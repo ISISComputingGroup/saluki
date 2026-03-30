@@ -165,7 +165,7 @@ fn produce_messages(
                     fbb,
                     det_max,
                     topic_prefix,
-                    &current_job_id,
+                    current_job_id,
                 )),
         ) {
             Ok(_) => {}
@@ -177,7 +177,7 @@ fn produce_messages(
         match producer.send(
             BaseRecord::to(&format!("{topic_prefix}_runInfo"))
                 .key("")
-                .payload(generate_run_stop(fbb, &current_job_id)),
+                .payload(generate_run_stop(fbb, current_job_id)),
         ) {
             Ok(_) => {}
             Err(err) => {
