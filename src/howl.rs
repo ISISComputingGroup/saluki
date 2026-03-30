@@ -127,7 +127,7 @@ fn produce_messages(
     det_max: i32,
     mut current_job_id: String,
 ) -> String {
-    // get currnet time
+    // get current time
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
