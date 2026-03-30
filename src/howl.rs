@@ -284,7 +284,7 @@ pub fn howl(conf: &HowlConfig) {
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
         frames += 1;
-        println!("current job id: {current_job_id}");
+        debug!("current job id: {current_job_id}");
         produce_messages(
             &producer,
             &mut fbb,
