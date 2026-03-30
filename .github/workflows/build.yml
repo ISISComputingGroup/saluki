@@ -20,9 +20,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.os }}
-      - name: install curl-dev
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install -y libcurl4-openssl-dev
       - name: Unit tests
         run: cargo test
       - name: Unit tests (release mode)
