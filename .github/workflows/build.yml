@@ -33,7 +33,7 @@ jobs:
       - name: Clippy
         run: cargo clippy -- --deny warnings
       - name: Upload artifacts (debug)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ format('debug-{0}', matrix.os) }}
           path: |
@@ -43,7 +43,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Upload artifacts (release)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ format('release-{0}', matrix.os) }}
           path: |
