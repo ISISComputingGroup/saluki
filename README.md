@@ -1,15 +1,15 @@
 ![](https://github.com/ISISComputingGroup/saluki/blob/main/resources/logo.png)
 
 ISIS-specific Kafka tools.
-Deserialises [the ESS flatbuffers blobs](https://github.com/ess-dmsc/python-streaming-data-types) from Kafka. 
+Deserialises [the ISIS flatbuffers blobs](https://github.com/ISISComputingGroup/streaming-data-types) from Kafka. 
 
 Also allows replaying data in a topic. 
 
 # Usage
 
-To run the latest version, install [uv](https://docs.astral.sh/uv/getting-started/installation/) and use `uvx saluki <args>`.
+To run the latest version, use `docker run ghcr.io/isiscomputinggroup/saluki:main <args>`
 
-alternatively you can `pip install saluki` and run it from a `venv`. 
+alternatively you can run it locally using `cargo run -- <args>`
 
 See `saluki --help` for all options. 
 
@@ -63,6 +63,11 @@ INFO:saluki:            0 - low:7515, high:7551, num_messages:36
 
 `saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -t 1762209990 1762209992` - This will forward messages between the two given timestamps.
 
-# Developer setup 
-`pip install -e .[dev]`
+# Developer setup
+
+some system dependencies are required. On Windows these are built-in, but on a debian-based linux distro you will need `libcurl4-openssl-dev`
+
+To build run `cargo build`
+
+
 
