@@ -1,6 +1,6 @@
 use crate::cli_utils::BrokerAndTopic;
 use futures::stream::StreamExt;
-use log::{error};
+use log::error;
 use rdkafka::consumer::{Consumer, DefaultConsumerContext, StreamConsumer};
 use rdkafka::{ClientConfig, Message};
 use tokio::time::{self, Duration};
