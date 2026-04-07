@@ -119,7 +119,7 @@ pub fn consume(
         }
         counter += 1;
         if Some(counter) == num_messages || Some(counter) == last {
-            info!("Reached {} messages, exiting", counter);
+            println!("Reached {} messages, exiting", counter);
             break;
         }
     }
