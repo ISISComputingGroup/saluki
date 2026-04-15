@@ -14,7 +14,7 @@ pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
         .expect("Consumer creation failed");
 
     consumer
-        .subscribe(&[&*topic.topic])
+        .subscribe(&[&topic.topic])
         .unwrap_or_else(|_| panic!("Failed to subscribe to topic {}", topic.topic));
 
     let start = std::time::Instant::now();

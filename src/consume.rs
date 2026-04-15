@@ -79,7 +79,7 @@ pub fn consume(
     }
 
     consumer
-        .subscribe(&[&*topic.topic])
+        .subscribe(&[&topic.topic])
         .unwrap_or_else(|_| panic!("Failed to subscribe to topic {}", topic.topic));
 
     let mut counter = 0;
