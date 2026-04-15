@@ -15,7 +15,7 @@ pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
 
     consumer
         .subscribe(&[&topic.topic])
-        .unwrap_or_else(|_| panic!("Failed to subscribe to topic {}", topic.topic));
+        .unwrap_or_else(|e| panic!("Failed to subscribe to topic {}: {}", topic.topic, e));
 
     let start = std::time::Instant::now();
     let mut bytes_this_second: usize = 0;
@@ -39,10 +39,9 @@ pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
                 }
             }
             _ = interval.tick() => {
-                // println!("Megabits per second: {}, Total megabytes: {}", bytes_this_second as f64/125000.0, total_bytes as f64/1_000_000.0);
-                println!("{:.5} Mbit/s (since program start: average {:.5} Mbit/s, {:.5} MB total)", 
-                bytes_this_second as f64/125000.0, 
-                total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(), 
+                println!("{:.5} Mbit/s (since program start: average {:.5} Mbit/s, {:.5} MB total)",
+                bytes_this_second as f64/125000.0,
+                total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(),
                 total_bytes as f64 / 1_000_000.0
             );
                 bytes_this_second = 0;
