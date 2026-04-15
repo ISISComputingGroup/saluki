@@ -9,7 +9,7 @@ use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
-use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
+use cli_utils::{BrokerAndTopic,  parse_broker_spec, parse_broker_spec_optional_topic};
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -85,6 +85,9 @@ enum Commands {
         /// topic name, including broker and port. format: broker:port/topic
         #[arg(value_parser = parse_broker_spec)]
         topic: BrokerAndTopic,
+        /// Data information print intervals (s)
+        #[arg[long, default_value = "1"]]
+        message_interval: u64,
     },
 }
 
@@ -135,8 +138,11 @@ async fn main() {
                 det_max,
             },
         }),
-        Commands::Count { topic } => {
-            count(topic).await;
+        Commands::Count { 
+            topic ,
+            message_interval,
+        } => {
+            count(topic, message_interval).await;
         } // Commands::Play {} => {}
     }
 }

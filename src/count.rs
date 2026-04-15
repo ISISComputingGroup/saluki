@@ -6,7 +6,7 @@ use rdkafka::{ClientConfig, Message};
 use tokio::time::{self, Duration};
 use uuid::Uuid;
 
-pub async fn count(topic: BrokerAndTopic) {
+pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
     let consumer: StreamConsumer<DefaultConsumerContext> = ClientConfig::new()
         .set("group.id", Uuid::new_v4().to_string())
         .set("bootstrap.servers", topic.broker())
@@ -17,10 +17,11 @@ pub async fn count(topic: BrokerAndTopic) {
         .subscribe(&[&*topic.topic])
         .unwrap_or_else(|_| panic!("Failed to subscribe to topic {}", topic.topic));
 
+    let start = std::time::Instant::now();
     let mut bytes_this_second: usize = 0;
     let mut total_bytes: usize = 0;
     let mut stream = consumer.stream();
-    let mut interval = time::interval(Duration::from_secs(1));
+    let mut interval = time::interval(Duration::from_secs(message_interval));
 
     loop {
         tokio::select! {
@@ -28,8 +29,8 @@ pub async fn count(topic: BrokerAndTopic) {
                 match _msg {
                     Some(Ok(msg)) => {
                         if msg.payload().is_some() {
-                        bytes_this_second += msg.payload_len();
-                        total_bytes += msg.payload_len();
+                            bytes_this_second += msg.payload_len();
+                            total_bytes += msg.payload_len();
                         }
 
                     },
@@ -38,7 +39,12 @@ pub async fn count(topic: BrokerAndTopic) {
                 }
             }
             _ = interval.tick() => {
-                println!("Megabits per second: {}, Total megabytes: {}", bytes_this_second as f32/125000.0, total_bytes as f32/1_000_000.0);
+                // println!("Megabits per second: {}, Total megabytes: {}", bytes_this_second as f64/125000.0, total_bytes as f64/1_000_000.0);
+                println!("{:.5} Mbit/s (since program start: average {:.5} Mbit/s, {:.5} MB total)", 
+                bytes_this_second as f64/125000.0, 
+                total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(), 
+                total_bytes as f64 / 1_000_000.0
+            );
                 bytes_this_second = 0;
             }
         }
