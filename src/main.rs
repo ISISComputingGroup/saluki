@@ -1,9 +1,11 @@
 mod cli_utils;
 mod consume;
+mod count;
 mod howl;
 mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
+use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
@@ -78,10 +80,19 @@ enum Commands {
         /// Maximum detector ID
         #[arg(long, default_value = "1000")]
         det_max: i32,
-    }, // TODO Play {},
+    },
+    Count {
+        /// topic name, including broker and port. format: broker:port/topic
+        #[arg(value_parser = parse_broker_spec)]
+        topic: BrokerAndTopic,
+        /// Data information print intervals (s)
+        #[arg[long, default_value = "1"]]
+        message_interval: u64,
+    },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     env_logger::Builder::new()
         .filter_level(cli.verbosity.into())
@@ -127,6 +138,11 @@ fn main() {
                 det_max,
             },
         }),
-        // Commands::Play {} => {}
+        Commands::Count {
+            topic,
+            message_interval,
+        } => {
+            count(topic, message_interval).await;
+        } // Commands::Play {} => {}
     }
 }
