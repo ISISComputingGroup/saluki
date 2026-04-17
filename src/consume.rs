@@ -1,5 +1,5 @@
-use crate::cli_utils::BrokerAndTopic;
 use crate::KafkaOption;
+use crate::cli_utils::BrokerAndTopic;
 use isis_streaming_data_types::{deserialize_message, get_schema_id};
 use log::{debug, error, info};
 use rdkafka::consumer::{BaseConsumer, Consumer};

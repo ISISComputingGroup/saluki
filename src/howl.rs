@@ -298,7 +298,7 @@ pub fn howl(conf: &HowlConfig) {
     println!("Each pu00 is {pu00_size} bytes");
     println!("Each ev44 is {ev44_size} bytes");
 
-    let mut config: ClientConfig= ClientConfig::new();
+    let mut config: ClientConfig = ClientConfig::new();
     config.set("bootstrap.servers", conf.broker);
 
     if let Some(kafka_options) = &conf.kafka_config {

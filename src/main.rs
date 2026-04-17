@@ -144,9 +144,19 @@ async fn main() {
             timestamp,
             kafka_config,
         } => consume::consume(
-            &topic, partition, &filter, messages, offset, last, timestamp, kafka_config,
+            &topic,
+            partition,
+            &filter,
+            messages,
+            offset,
+            last,
+            timestamp,
+            kafka_config,
         ),
-        Commands::Sniff { broker, kafka_config } => sniff(&broker, kafka_config),
+        Commands::Sniff {
+            broker,
+            kafka_config,
+        } => sniff(&broker, kafka_config),
         Commands::Howl {
             broker,
             topic_prefix,
