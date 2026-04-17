@@ -79,7 +79,7 @@ pub fn consume(
     }
 
     consumer
-        .subscribe(&[&*topic.topic])
+        .subscribe(&[&topic.topic])
         .unwrap_or_else(|_| panic!("Failed to subscribe to topic {}", topic.topic));
 
     let mut counter = 0;
@@ -119,7 +119,7 @@ pub fn consume(
         }
         counter += 1;
         if Some(counter) == num_messages || Some(counter) == last {
-            info!("Reached {} messages, exiting", counter);
+            println!("Reached {} messages, exiting", counter);
             break;
         }
     }
