@@ -1,9 +1,14 @@
 use crate::cli_utils::BrokerAndOptionalTopic;
+use crate::KafkaOption;
 use rdkafka::ClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer};
 use std::time::Duration;
 
-pub fn sniff(broker: &BrokerAndOptionalTopic) {
+pub fn sniff(broker: &BrokerAndOptionalTopic, kafka_config: Option<Vec<KafkaOption>>) {
+     let consumer: BaseConsumer = ClientConfig::new()
+        .set("bootstrap.servers", broker.broker())
+        .create()
+        .expect("Consumer creation failed");
     let consumer: BaseConsumer = ClientConfig::new()
         .set("bootstrap.servers", broker.broker())
         .create()

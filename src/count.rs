@@ -1,3 +1,4 @@
+use crate::KafkaOption;
 use crate::cli_utils::BrokerAndTopic;
 use futures::stream::StreamExt;
 use log::error;
@@ -6,12 +7,27 @@ use rdkafka::{ClientConfig, Message};
 use tokio::time::{self, Duration};
 use uuid::Uuid;
 
-pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
-    let consumer: StreamConsumer<DefaultConsumerContext> = ClientConfig::new()
-        .set("group.id", Uuid::new_v4().to_string())
-        .set("bootstrap.servers", topic.broker())
-        .create()
-        .expect("Consumer creation failed");
+pub async fn count(
+    topic: BrokerAndTopic,
+    message_interval: u64,
+    kafka_config: Option<Vec<KafkaOption>>,
+) {
+    let mut config = ClientConfig::new();
+    config.set("group.id", Uuid::new_v4().to_string());
+    config.set("bootstrap.servers", topic.broker());
+
+    if let Some(kafka_options) = kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    let consumer: StreamConsumer<DefaultConsumerContext> =
+        config.create().expect("Consumer creation failed");
 
     consumer
         .subscribe(&[&topic.topic])
@@ -40,7 +56,7 @@ pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
             }
             _ = interval.tick() => {
                 println!("{:.5} Mbit/s (since program start: average {:.5} Mbit/s, {:.5} MB total)",
-                bytes_this_second as f64/125000.0 / interval.period().as_secs_f64(),
+                bytes_this_second as f64/125000.0,
                 total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(),
                 total_bytes as f64 / 1_000_000.0
             );
