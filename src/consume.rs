@@ -19,7 +19,7 @@ pub fn consume(
     last: Option<i64>,
     timestamp: Option<i64>,
     kafka_config: Option<Vec<KafkaOption>>,
-) { 
+) {
     debug!(
         "Listening to topic: {} partition {:?} on broker {}:{}, filtering {}",
         topic.topic,
