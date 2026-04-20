@@ -27,15 +27,13 @@ pub async fn count(topic: BrokerAndTopic, message_interval: u64) {
         tokio::select! {
             _msg = stream.next() => {
                 match _msg {
-                    Some(Ok(msg)) => {
-                        if msg.payload().is_some() {
+                    Some(Ok(msg))
+                        if msg.payload().is_some() => {
                             bytes_this_second += msg.payload_len();
                             total_bytes += msg.payload_len();
-                        }
-
-                    },
+                        },
                     Some(Err(e)) => error!("Error reading from stream {:?}", e),
-                    None => {}
+                    _ => {}
                 }
             }
             _ = interval.tick() => {
