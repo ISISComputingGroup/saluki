@@ -44,6 +44,12 @@ enum Commands {
         /// Print last x messages on topic
         #[arg(short, long, conflicts_with_all = ["offset","timestamp","messages","filter"])]
         last: Option<i64>,
+        /// Show message key
+        #[arg(long, action=clap::ArgAction::SetTrue)]
+        key: bool,
+        /// Print using terse format (just schema ID and length)
+        #[arg(long, action=clap::ArgAction::SetTrue)]
+        terse: bool,
     },
     /// Print broker metadata.
     Sniff {
@@ -108,8 +114,10 @@ async fn main() {
             offset,
             last,
             timestamp,
+            key,
+            terse,
         } => consume::consume(
-            &topic, partition, &filter, messages, offset, last, timestamp,
+            &topic, partition, &filter, messages, offset, last, timestamp, key, terse,
         ),
         Commands::Sniff { broker } => sniff(&broker),
         Commands::Howl {

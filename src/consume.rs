@@ -7,6 +7,7 @@ use rdkafka::{ClientConfig, Message, Offset, TopicPartitionList};
 use std::time::Duration;
 use uuid::Uuid;
 
+#[allow(clippy::too_many_arguments)]
 pub fn consume(
     topic: &BrokerAndTopic,
     partition: Option<i32>,
@@ -15,6 +16,8 @@ pub fn consume(
     offset: Option<i64>,
     last: Option<i64>,
     timestamp: Option<i64>,
+    key: bool,
+    terse: bool,
 ) {
     debug!(
         "Listening to topic: {} partition {:?} on broker {}:{}, filtering {}",
@@ -100,9 +103,22 @@ pub fn consume(
                             }
                             debug!("Message has no schema id, ignoring filter")
                         }
-
+                        print!("[partition={}", message.partition());
+                        if key {
+                            print!(" key={:?}", message.key().unwrap_or(b""));
+                        }
+                        print!("] ");
                         match deserialize_message(p) {
-                            Ok(d) => println!("{d:?}"),
+                            Ok(d) => {
+                                if terse {
+                                    let schema = get_schema_id(p)
+                                        .and_then(|s| str::from_utf8(s).ok())
+                                        .unwrap_or("invalid");
+                                    println!("{schema} ({} bytes)", p.len())
+                                } else {
+                                    println!("{d:?}")
+                                }
+                            }
                             Err(e) => error!("Failed to deserialize message: {e:?}"),
                         }
                     }
