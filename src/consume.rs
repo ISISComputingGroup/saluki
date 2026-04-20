@@ -9,6 +9,7 @@ use rdkafka::{ClientConfig, Message, Offset, TopicPartitionList};
 use std::time::Duration;
 use uuid::Uuid;
 
+#[allow(clippy::too_many_arguments)]
 pub fn consume(
     topic: &BrokerAndTopic,
     partition: Option<i32>,
@@ -18,7 +19,7 @@ pub fn consume(
     last: Option<i64>,
     timestamp: Option<i64>,
     kafka_config: Option<Vec<KafkaOption>>,
-) {
+) { 
     debug!(
         "Listening to topic: {} partition {:?} on broker {}:{}, filtering {}",
         topic.topic,
