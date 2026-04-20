@@ -170,6 +170,7 @@ async fn main() {
             det_max,
             kafka_config,
         } => howl(&HowlConfig {
+            kafka_config,
             broker: &broker,
             event_topic: &format!("{topic_prefix}_rawEvents"),
             run_info_topic: &format!("{topic_prefix}_runInfo"),
@@ -182,7 +183,6 @@ async fn main() {
                 tof_sigma,
                 det_min,
                 det_max,
-                kafka_config,
             },
         }),
         Commands::Count {

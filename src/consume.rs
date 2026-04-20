@@ -1,5 +1,6 @@
 use crate::KafkaOption;
 use crate::cli_utils::BrokerAndTopic;
+
 use isis_streaming_data_types::{deserialize_message, get_schema_id};
 use log::{debug, error, info};
 use rdkafka::consumer::{BaseConsumer, Consumer};
@@ -26,7 +27,6 @@ pub fn consume(
         topic.port,
         filter.as_deref().unwrap_or("none")
     );
-
     let mut config = ClientConfig::new();
     config.set("group.id", Uuid::new_v4().to_string());
     config.set("bootstrap.servers", topic.broker());
@@ -41,8 +41,7 @@ pub fn consume(
         }
     }
 
-    let consumer: StreamConsumer<DefaultConsumerContext> =
-        config.create().expect("Consumer creation failed");
+    let consumer: BaseConsumer = config.create().expect("Base creation failed");
 
     let start: Option<Offset>;
 
