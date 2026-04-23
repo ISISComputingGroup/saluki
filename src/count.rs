@@ -53,7 +53,7 @@ pub async fn count(
             }
             _ = interval.tick() => {
                 println!("{:.5} Mbit/s (since program start: average {:.5} Mbit/s, {:.5} MB total)",
-                    bytes_this_second as f64/125000.0 /  interval.period().as_secs_f64(),
+                    bytes_this_second as f64/125000.0 / interval.period().as_secs_f64(),
                     total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(),
                     total_bytes as f64 / 1_000_000.0
                 );
