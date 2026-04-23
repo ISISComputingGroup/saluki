@@ -43,20 +43,20 @@ pub async fn count(
         tokio::select! {
             _msg = stream.next() => {
                 match _msg {
-                    Some(Ok(msg)) => if msg.payload().is_some() {
-                            bytes_this_second += msg.payload_len();
-                            total_bytes += msg.payload_len();
+                    Some(Ok(msg)) if msg.payload().is_some() => {
+                        bytes_this_second += msg.payload_len();
+                        total_bytes += msg.payload_len();
                     },
                     Some(Err(e)) => error!("Error reading from stream {:?}", e),
-                    None => {}
+                    _ => {}
                 }
             }
             _ = interval.tick() => {
                 println!("{:.5} Mbit/s (since program start: average {:.5} Mbit/s, {:.5} MB total)",
-                bytes_this_second as f64/125000.0,
-                total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(),
-                total_bytes as f64 / 1_000_000.0
-            );
+                    bytes_this_second as f64/125000.0,
+                    total_bytes as f64 / 125000.0 / start.elapsed().as_secs_f64(),
+                    total_bytes as f64 / 1_000_000.0
+                );
                 bytes_this_second = 0;
             }
         }
