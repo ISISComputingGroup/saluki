@@ -5,12 +5,12 @@ mod howl;
 mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
+use crate::cli_utils::KafkaOption;
 use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
-use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -18,27 +18,6 @@ struct Cli {
     command: Commands,
     #[command(flatten)]
     verbosity: clap_verbosity_flag::Verbosity,
-}
-
-#[derive(Debug, Clone)]
-pub struct KafkaOption {
-    key: String,
-    value: String,
-}
-
-impl FromStr for KafkaOption {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (key, value) = s
-            .split_once('=')
-            .ok_or_else(|| format!("expected KEY=VALUE, got '{}", s))?;
-
-        Ok(KafkaOption {
-            key: key.to_string(),
-            value: value.to_string(),
-        })
-    }
 }
 
 #[derive(Subcommand, Debug)]
