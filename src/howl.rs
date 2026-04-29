@@ -243,7 +243,7 @@ fn generate_fake_metadata<'a>(fbb: &'a mut FlatBufferBuilder<'_>, timestamp_ns: 
         reference_time: timestamp_ns,
         message_id: 0,
         source_name: Some(fbb.create_string("saluki")),
-        period_number: Some(1),
+        period_number: Some(0),
         vetos: Some(0),
         proton_charge: Some(0.1),
     };
