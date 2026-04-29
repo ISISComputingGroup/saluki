@@ -1,13 +1,24 @@
+use crate::KafkaOption;
 use crate::cli_utils::BrokerAndOptionalTopic;
 use rdkafka::ClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer};
 use std::time::Duration;
 
-pub fn sniff(broker: &BrokerAndOptionalTopic) {
-    let consumer: BaseConsumer = ClientConfig::new()
-        .set("bootstrap.servers", broker.broker())
-        .create()
-        .expect("Consumer creation failed");
+pub fn sniff(broker: &BrokerAndOptionalTopic, kafka_config: Option<Vec<KafkaOption>>) {
+    let mut config = ClientConfig::new();
+    config.set("bootstrap.servers", broker.broker());
+
+    if let Some(kafka_options) = kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    let consumer: BaseConsumer = config.create().expect("Consumer creation failed");
 
     let metadata = consumer
         .fetch_metadata(broker.topic.as_deref(), Duration::from_secs(1))

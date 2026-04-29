@@ -5,6 +5,7 @@ mod howl;
 mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
+use crate::cli_utils::KafkaOption;
 use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
@@ -44,12 +45,18 @@ enum Commands {
         /// Print last x messages on topic
         #[arg(short, long, conflicts_with_all = ["offset","timestamp","messages","filter"])]
         last: Option<i64>,
+        // Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
     },
     /// Print broker metadata.
     Sniff {
         /// The broker to look at metadata. Optionally suffixed with a topic name to filter to that topic.
         #[arg(value_parser = parse_broker_spec_optional_topic)]
         broker: BrokerAndOptionalTopic,
+        // Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
     },
     Howl {
         /// Kafka Broker URL, including port
@@ -80,6 +87,9 @@ enum Commands {
         /// Maximum detector ID
         #[arg(long, default_value = "1000")]
         det_max: i32,
+        // Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
     },
     Count {
         /// topic name, including broker and port. format: broker:port/topic
@@ -88,6 +98,9 @@ enum Commands {
         /// Data information print intervals (s)
         #[arg[long, default_value = "1"]]
         message_interval: u64,
+        /// Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
     },
 }
 
@@ -108,10 +121,21 @@ async fn main() {
             offset,
             last,
             timestamp,
+            kafka_config,
         } => consume::consume(
-            &topic, partition, &filter, messages, offset, last, timestamp,
+            &topic,
+            partition,
+            &filter,
+            messages,
+            offset,
+            last,
+            timestamp,
+            kafka_config,
         ),
-        Commands::Sniff { broker } => sniff(&broker),
+        Commands::Sniff {
+            broker,
+            kafka_config,
+        } => sniff(&broker, kafka_config),
         Commands::Howl {
             broker,
             topic_prefix,
@@ -123,7 +147,9 @@ async fn main() {
             tof_sigma,
             det_min,
             det_max,
+            kafka_config,
         } => howl(&HowlConfig {
+            kafka_config,
             broker: &broker,
             event_topic: &format!("{topic_prefix}_rawEvents"),
             run_info_topic: &format!("{topic_prefix}_runInfo"),
@@ -141,8 +167,9 @@ async fn main() {
         Commands::Count {
             topic,
             message_interval,
+            kafka_config,
         } => {
-            count(topic, message_interval).await;
+            count(topic, message_interval, kafka_config).await;
         } // Commands::Play {} => {}
     }
 }

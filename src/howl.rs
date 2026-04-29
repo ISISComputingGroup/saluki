@@ -1,3 +1,4 @@
+use crate::KafkaOption;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -260,6 +261,7 @@ pub struct HowlConfig<'a> {
     pub frames_per_second: u32,
     pub frames_per_run: u32,
     pub event_message_config: &'a EventMessageConfig,
+    pub kafka_config: Option<Vec<KafkaOption>>,
 }
 
 pub fn howl(conf: &HowlConfig) {
@@ -296,10 +298,21 @@ pub fn howl(conf: &HowlConfig) {
     println!("Each pu00 is {pu00_size} bytes");
     println!("Each ev44 is {ev44_size} bytes");
 
-    let producer: ThreadedProducer<DefaultProducerContext> = ClientConfig::new()
-        .set("bootstrap.servers", conf.broker)
-        .create()
-        .expect("Producer creation error");
+    let mut config: ClientConfig = ClientConfig::new();
+    config.set("bootstrap.servers", conf.broker);
+
+    if let Some(kafka_options) = &conf.kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    let producer: ThreadedProducer<DefaultProducerContext> =
+        config.create().expect("Producer creation error");
 
     let mut current_job_id = Uuid::new_v4().to_string();
 

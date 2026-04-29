@@ -1,4 +1,6 @@
+use crate::KafkaOption;
 use crate::cli_utils::BrokerAndTopic;
+
 use isis_streaming_data_types::{deserialize_message, get_schema_id};
 use log::{debug, error, info};
 use rdkafka::consumer::{BaseConsumer, Consumer};
@@ -7,6 +9,7 @@ use rdkafka::{ClientConfig, Message, Offset, TopicPartitionList};
 use std::time::Duration;
 use uuid::Uuid;
 
+#[allow(clippy::too_many_arguments)]
 pub fn consume(
     topic: &BrokerAndTopic,
     partition: Option<i32>,
@@ -15,6 +18,7 @@ pub fn consume(
     offset: Option<i64>,
     last: Option<i64>,
     timestamp: Option<i64>,
+    kafka_config: Option<Vec<KafkaOption>>,
 ) {
     debug!(
         "Listening to topic: {} partition {:?} on broker {}:{}, filtering {}",
@@ -24,11 +28,21 @@ pub fn consume(
         topic.port,
         filter.as_deref().unwrap_or("none")
     );
-    let consumer: BaseConsumer = ClientConfig::new()
-        .set("group.id", Uuid::new_v4().to_string())
-        .set("bootstrap.servers", topic.broker())
-        .create()
-        .expect("Consumer creation failed");
+    let mut config = ClientConfig::new();
+    config.set("group.id", Uuid::new_v4().to_string());
+    config.set("bootstrap.servers", topic.broker());
+
+    if let Some(kafka_options) = kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    let consumer: BaseConsumer = config.create().expect("Base creation failed");
 
     let start: Option<Offset>;
 
