@@ -87,6 +87,9 @@ enum Commands {
         /// Maximum detector ID
         #[arg(long, default_value = "1000")]
         det_max: i32,
+        /// Veto probability (0 = never vetoed; 1 = always vetoed)
+        #[arg(long, default_value = "0.0")]
+        veto_probability: f64,
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
@@ -147,6 +150,7 @@ async fn main() {
             tof_sigma,
             det_min,
             det_max,
+            veto_probability,
             kafka_config,
         } => howl(&HowlConfig {
             kafka_config,
@@ -163,6 +167,7 @@ async fn main() {
                 det_min,
                 det_max,
             },
+            veto_probability,
         }),
         Commands::Count {
             topic,
