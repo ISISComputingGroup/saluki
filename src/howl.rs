@@ -133,7 +133,7 @@ fn produce_messages(
     match producer.send(
         BaseRecord::to(conf.event_topic)
             .key("")
-            .payload(generate_fake_metadata(fbb, now_nanos))
+            .payload(generate_fake_metadata(rng, fbb, now_nanos))
             .timestamp(now_nanos / 1_000_000),
     ) {
         Ok(_) => {}
@@ -238,14 +238,19 @@ fn generate_fake_events<'a>(
     fbb.finished_data()
 }
 
-fn generate_fake_metadata<'a>(fbb: &'a mut FlatBufferBuilder<'_>, timestamp_ns: i64) -> &'a [u8] {
+fn generate_fake_metadata<'a>(
+    rng: &mut ThreadRng,
+    fbb: &'a mut FlatBufferBuilder<'_>,
+    timestamp_ns: i64
+) -> &'a [u8] {
     fbb.reset();
+    let vetos = rng.random_range(0..=1);
     let args = Pu00MessageArgs {
         reference_time: timestamp_ns,
         message_id: 0,
         source_name: Some(fbb.create_string("saluki")),
         period_number: Some(0),
-        vetos: Some(0),
+        vetos: Some(vetos),
         proton_charge: Some(0.1),
     };
     let pu00 = Pu00Message::create(fbb, &args);
@@ -281,7 +286,7 @@ pub fn howl(conf: &HowlConfig) {
             as u32;
     debug!("ev44 size is {ev44_size} bytes");
 
-    let pu00_size = generate_fake_metadata(&mut fbb, now_nanos).len() as u32;
+    let pu00_size = generate_fake_metadata(&mut rng, &mut fbb, now_nanos).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
     // calculate overall rate (with both ev44 and pu00)
