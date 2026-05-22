@@ -49,7 +49,7 @@ enum Commands {
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
     },
-    /// Print broker metadata.
+    /// Print broker/topic metadata.
     Sniff {
         /// The broker to look at metadata. Optionally suffixed with a topic name to filter to that topic.
         #[arg(value_parser = parse_broker_spec_optional_topic)]
@@ -58,6 +58,7 @@ enum Commands {
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
     },
+    /// Produce fake runs and other data in the streaming pipeline
     Howl {
         /// Kafka Broker URL, including port
         broker: String,
@@ -94,6 +95,7 @@ enum Commands {
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
     },
+    /// Count topic data rates
     Count {
         /// topic name, including broker and port. format: broker:port/topic
         #[arg(value_parser = parse_broker_spec)]
