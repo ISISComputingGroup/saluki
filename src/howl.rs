@@ -175,6 +175,18 @@ fn produce_messages(
         match producer.send(
             BaseRecord::to(conf.run_info_topic)
                 .key("")
+                .payload(generate_run_stop(fbb, current_job_id))
+                .timestamp(now_nanos / 1_000_000),
+        ) {
+            Ok(_) => {}
+            Err(err) => {
+                error!("Failed to send run stop: {}", err.0);
+            }
+        }
+        *current_job_id = Uuid::new_v4().to_string();
+        match producer.send(
+            BaseRecord::to(conf.run_info_topic)
+                .key("")
                 .payload(generate_run_start(
                     fbb,
                     conf.event_message_config.det_max,
@@ -186,18 +198,6 @@ fn produce_messages(
             Ok(_) => {}
             Err(err) => {
                 error!("Failed to send run start: {}", err.0);
-            }
-        }
-        *current_job_id = Uuid::new_v4().to_string();
-        match producer.send(
-            BaseRecord::to(conf.run_info_topic)
-                .key("")
-                .payload(generate_run_stop(fbb, current_job_id))
-                .timestamp(now_nanos / 1_000_000),
-        ) {
-            Ok(_) => {}
-            Err(err) => {
-                error!("Failed to send run stop: {}", err.0);
             }
         }
     }
