@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use std::str::FromStr;
 
 pub(crate) fn parse_broker_spec(s: &str) -> Result<BrokerAndTopic> {
     let b = parse_broker_spec_optional_topic(s)?;
@@ -61,8 +62,30 @@ impl BrokerAndOptionalTopic {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct KafkaOption {
+    pub key: String,
+    pub value: String,
+}
+
+impl FromStr for KafkaOption {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (key, value) = s
+            .split_once('=')
+            .ok_or_else(|| format!("expected KEY=VALUE, got '{}'", s))?;
+
+        Ok(KafkaOption {
+            key: key.to_string(),
+            value: value.to_string(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use rstest::*;
 
@@ -121,5 +144,37 @@ mod tests {
             topic: None,
         };
         assert_eq!(b.broker(), "localhost:9092");
+    }
+    #[test]
+    fn test_parse_valid_kafka_option() {
+        let res = KafkaOption::from_str("key=value").unwrap();
+        assert_eq!(res.key, "key");
+        assert_eq!(res.value, "value");
+    }
+
+    #[test]
+    fn test_parse_valid_kafka_option_without_equals() {
+        let res = KafkaOption::from_str("key value");
+        assert!(
+            res.is_err(),
+            "Expected error when parsing invalid Kafka option"
+        );
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            "expected KEY=VALUE, got 'key value'"
+        );
+    }
+
+    #[test]
+    fn test_parse_valid_kafka_option_without_space() {
+        let res = KafkaOption::from_str("keyvalue");
+        assert!(
+            res.is_err(),
+            "Expected error when parsing invalid Kafka option"
+        );
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            "expected KEY=VALUE, got 'keyvalue'"
+        );
     }
 }

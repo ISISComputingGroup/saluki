@@ -1,9 +1,12 @@
 mod cli_utils;
 mod consume;
+mod count;
 mod howl;
 mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
+use crate::cli_utils::KafkaOption;
+use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
@@ -48,13 +51,20 @@ enum Commands {
         /// Print using terse format (just schema ID and length)
         #[arg(long, action=clap::ArgAction::SetTrue)]
         terse: bool,
+        /// Additonal Kafka options
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
     },
-    /// Print broker metadata.
+    /// Print broker/topic metadata.
     Sniff {
         /// The broker to look at metadata. Optionally suffixed with a topic name to filter to that topic.
         #[arg(value_parser = parse_broker_spec_optional_topic)]
         broker: BrokerAndOptionalTopic,
+        // Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
     },
+    /// Produce fake runs and other data in the streaming pipeline
     Howl {
         /// Kafka Broker URL, including port
         broker: String,
@@ -84,10 +94,29 @@ enum Commands {
         /// Maximum detector ID
         #[arg(long, default_value = "1000")]
         det_max: i32,
-    }, // TODO Play {},
+        /// Veto probability (0 = never vetoed; 1 = always vetoed)
+        #[arg(long, default_value = "0.0")]
+        veto_probability: f64,
+        // Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
+    },
+    /// Count topic data rates
+    Count {
+        /// topic name, including broker and port. format: broker:port/topic
+        #[arg(value_parser = parse_broker_spec)]
+        topic: BrokerAndTopic,
+        /// Data information print intervals (s)
+        #[arg[long, default_value = "1"]]
+        message_interval: u64,
+        /// Additonal command line arguments
+        #[arg(short = 'X', long)]
+        kafka_config: Option<Vec<KafkaOption>>,
+    },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     env_logger::Builder::new()
         .filter_level(cli.verbosity.into())
@@ -105,10 +134,23 @@ fn main() {
             timestamp,
             key,
             terse,
+            kafka_config,
         } => consume::consume(
-            &topic, partition, &filter, messages, offset, last, timestamp, key, terse,
+            &topic,
+            partition,
+            &filter,
+            messages,
+            offset,
+            last,
+            timestamp,
+            key,
+            terse,
+            kafka_config,
         ),
-        Commands::Sniff { broker } => sniff(&broker),
+        Commands::Sniff {
+            broker,
+            kafka_config,
+        } => sniff(&broker, kafka_config),
         Commands::Howl {
             broker,
             topic_prefix,
@@ -120,7 +162,10 @@ fn main() {
             tof_sigma,
             det_min,
             det_max,
+            veto_probability,
+            kafka_config,
         } => howl(&HowlConfig {
+            kafka_config,
             broker: &broker,
             event_topic: &format!("{topic_prefix}_rawEvents"),
             run_info_topic: &format!("{topic_prefix}_runInfo"),
@@ -134,7 +179,14 @@ fn main() {
                 det_min,
                 det_max,
             },
+            veto_probability,
         }),
-        // Commands::Play {} => {}
+        Commands::Count {
+            topic,
+            message_interval,
+            kafka_config,
+        } => {
+            count(topic, message_interval, kafka_config).await;
+        } // Commands::Play {} => {}
     }
 }

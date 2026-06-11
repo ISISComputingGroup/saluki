@@ -63,6 +63,15 @@ INFO:saluki:            0 - low:7515, high:7551, num_messages:36
 
 `saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -t 1762209990 1762209992` - This will forward messages between the two given timestamps.
 
+
+## `count` - Count topic data rates
+
+`count` is used for viewing the current data rate in a given topic. 
+
+An example of using this could be:
+
+`saluki count mybroker:9092/mytopic --message-interval 3` - this listens to the `mytopic` topic and prints the data rate between 3 second intervals. 
+
 # Developer setup
 
 some system dependencies are required. On Windows these are built-in, but on a debian-based linux distro you will need `libcurl4-openssl-dev`

@@ -1,4 +1,6 @@
+use crate::KafkaOption;
 use crate::cli_utils::BrokerAndTopic;
+
 use isis_streaming_data_types::{deserialize_message, get_schema_id};
 use log::{debug, error, info};
 use rdkafka::consumer::{BaseConsumer, Consumer};
@@ -18,6 +20,7 @@ pub fn consume(
     timestamp: Option<i64>,
     key: bool,
     terse: bool,
+    kafka_config: Option<Vec<KafkaOption>>,
 ) {
     debug!(
         "Listening to topic: {} partition {:?} on broker {}:{}, filtering {}",
@@ -27,11 +30,21 @@ pub fn consume(
         topic.port,
         filter.as_deref().unwrap_or("none")
     );
-    let consumer: BaseConsumer = ClientConfig::new()
-        .set("group.id", Uuid::new_v4().to_string())
-        .set("bootstrap.servers", topic.broker())
-        .create()
-        .expect("Consumer creation failed");
+    let mut config = ClientConfig::new();
+    config.set("group.id", Uuid::new_v4().to_string());
+    config.set("bootstrap.servers", topic.broker());
+
+    if let Some(kafka_options) = kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    let consumer: BaseConsumer = config.create().expect("Base creation failed");
 
     let start: Option<Offset>;
 
@@ -82,7 +95,7 @@ pub fn consume(
     }
 
     consumer
-        .subscribe(&[&*topic.topic])
+        .subscribe(&[&topic.topic])
         .unwrap_or_else(|_| panic!("Failed to subscribe to topic {}", topic.topic));
 
     let mut counter = 0;
@@ -135,7 +148,7 @@ pub fn consume(
         }
         counter += 1;
         if Some(counter) == num_messages || Some(counter) == last {
-            info!("Reached {} messages, exiting", counter);
+            println!("Reached {} messages, exiting", counter);
             break;
         }
     }

@@ -1,3 +1,4 @@
+use crate::KafkaOption;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -106,7 +107,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
         run_name: None,
         job_id: Some(fbb.create_string(job_id)),
         service_id: None,
-        command_id: None,
+        command_id: Some(fbb.create_string("")),
     };
     let run_stop_buf = RunStop::create(fbb, &run_stop_args);
     finish_run_stop_buffer(fbb, run_stop_buf);
@@ -132,7 +133,12 @@ fn produce_messages(
     match producer.send(
         BaseRecord::to(conf.event_topic)
             .key("")
-            .payload(generate_fake_metadata(fbb, now_nanos))
+            .payload(generate_fake_metadata(
+                rng,
+                fbb,
+                now_nanos,
+                conf.veto_probability,
+            ))
             .timestamp(now_nanos / 1_000_000),
     ) {
         Ok(_) => {}
@@ -169,6 +175,18 @@ fn produce_messages(
         match producer.send(
             BaseRecord::to(conf.run_info_topic)
                 .key("")
+                .payload(generate_run_stop(fbb, current_job_id))
+                .timestamp(now_nanos / 1_000_000),
+        ) {
+            Ok(_) => {}
+            Err(err) => {
+                error!("Failed to send run stop: {}", err.0);
+            }
+        }
+        *current_job_id = Uuid::new_v4().to_string();
+        match producer.send(
+            BaseRecord::to(conf.run_info_topic)
+                .key("")
                 .payload(generate_run_start(
                     fbb,
                     conf.event_message_config.det_max,
@@ -180,18 +198,6 @@ fn produce_messages(
             Ok(_) => {}
             Err(err) => {
                 error!("Failed to send run start: {}", err.0);
-            }
-        }
-        *current_job_id = Uuid::new_v4().to_string();
-        match producer.send(
-            BaseRecord::to(conf.run_info_topic)
-                .key("")
-                .payload(generate_run_stop(fbb, current_job_id))
-                .timestamp(now_nanos / 1_000_000),
-        ) {
-            Ok(_) => {}
-            Err(err) => {
-                error!("Failed to send run stop: {}", err.0);
             }
         }
     }
@@ -237,14 +243,20 @@ fn generate_fake_events<'a>(
     fbb.finished_data()
 }
 
-fn generate_fake_metadata<'a>(fbb: &'a mut FlatBufferBuilder<'_>, timestamp_ns: i64) -> &'a [u8] {
+fn generate_fake_metadata<'a>(
+    rng: &mut ThreadRng,
+    fbb: &'a mut FlatBufferBuilder<'_>,
+    timestamp_ns: i64,
+    veto_probability: f64,
+) -> &'a [u8] {
     fbb.reset();
+    let is_vetoed = rng.random_range(0.0..1.0) < veto_probability;
     let args = Pu00MessageArgs {
         reference_time: timestamp_ns,
         message_id: 0,
         source_name: Some(fbb.create_string("saluki")),
-        period_number: Some(1),
-        vetos: Some(0),
+        period_number: Some(0),
+        vetos: Some(if is_vetoed { 1 } else { 0 }),
         proton_charge: Some(0.1),
     };
     let pu00 = Pu00Message::create(fbb, &args);
@@ -259,7 +271,9 @@ pub struct HowlConfig<'a> {
     pub messages_per_frame: u32,
     pub frames_per_second: u32,
     pub frames_per_run: u32,
+    pub veto_probability: f64, // 1 = always vetoed, 0 = never vetoed
     pub event_message_config: &'a EventMessageConfig,
+    pub kafka_config: Option<Vec<KafkaOption>>,
 }
 
 pub fn howl(conf: &HowlConfig) {
@@ -279,7 +293,8 @@ pub fn howl(conf: &HowlConfig) {
             as u32;
     debug!("ev44 size is {ev44_size} bytes");
 
-    let pu00_size = generate_fake_metadata(&mut fbb, now_nanos).len() as u32;
+    let pu00_size =
+        generate_fake_metadata(&mut rng, &mut fbb, now_nanos, conf.veto_probability).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
     // calculate overall rate (with both ev44 and pu00)
@@ -296,10 +311,21 @@ pub fn howl(conf: &HowlConfig) {
     println!("Each pu00 is {pu00_size} bytes");
     println!("Each ev44 is {ev44_size} bytes");
 
-    let producer: ThreadedProducer<DefaultProducerContext> = ClientConfig::new()
-        .set("bootstrap.servers", conf.broker)
-        .create()
-        .expect("Producer creation error");
+    let mut config: ClientConfig = ClientConfig::new();
+    config.set("bootstrap.servers", conf.broker);
+
+    if let Some(kafka_options) = &conf.kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    let producer: ThreadedProducer<DefaultProducerContext> =
+        config.create().expect("Producer creation error");
 
     let mut current_job_id = Uuid::new_v4().to_string();
 
