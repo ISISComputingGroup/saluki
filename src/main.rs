@@ -6,6 +6,7 @@ mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
 use crate::cli_utils::KafkaOption;
+use crate::consume::ConsumeConfig;
 use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
@@ -135,18 +136,18 @@ async fn main() {
             key,
             terse,
             kafka_config,
-        } => consume::consume(
-            &topic,
+        } => consume::consume(&ConsumeConfig {
+            topic: &topic,
             partition,
-            &filter,
-            messages,
+            filter: &filter,
+            num_messages: messages,
             offset,
             last,
             timestamp,
             key,
             terse,
             kafka_config,
-        ),
+        }),
         Commands::Sniff {
             broker,
             kafka_config,
