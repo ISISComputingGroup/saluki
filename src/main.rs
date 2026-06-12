@@ -6,6 +6,7 @@ mod sniff;
 
 use crate::cli_utils::BrokerAndOptionalTopic;
 use crate::cli_utils::KafkaOption;
+use crate::consume::ConsumeConfig;
 use crate::count::count;
 use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
@@ -45,7 +46,13 @@ enum Commands {
         /// Print last x messages on topic
         #[arg(short, long, conflicts_with_all = ["offset","timestamp","messages","filter"])]
         last: Option<i64>,
-        // Additonal command line arguments
+        /// Show message key
+        #[arg(long, action=clap::ArgAction::SetTrue)]
+        key: bool,
+        /// Print using terse format (just schema ID and length)
+        #[arg(long, action=clap::ArgAction::SetTrue)]
+        terse: bool,
+        /// Additonal Kafka options
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
     },
@@ -126,17 +133,21 @@ async fn main() {
             offset,
             last,
             timestamp,
+            key,
+            terse,
             kafka_config,
-        } => consume::consume(
-            &topic,
+        } => consume::consume(&ConsumeConfig {
+            topic: &topic,
             partition,
-            &filter,
-            messages,
+            filter: &filter,
+            num_messages: messages,
             offset,
             last,
             timestamp,
+            key,
+            terse,
             kafka_config,
-        ),
+        }),
         Commands::Sniff {
             broker,
             kafka_config,
