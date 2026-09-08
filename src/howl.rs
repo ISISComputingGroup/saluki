@@ -116,7 +116,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
 
 fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
-    mut fbb: &mut FlatBufferBuilder,
+    fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
     frame: u32,
     conf: &HowlConfig,
@@ -147,8 +147,7 @@ fn produce_messages(
         }
     }
 
-    let ev44 =
-        generate_fake_events(&mut fbb, rng, frame, conf.event_message_config, now_nanos).to_vec();
+    let ev44 = generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos).to_vec();
 
     for _ in 0..conf.messages_per_frame {
         if *conf.fast {
@@ -166,7 +165,7 @@ fn produce_messages(
                     BaseRecord::to(conf.event_topic)
                         .key("")
                         .payload(generate_fake_events(
-                            &mut fbb,
+                            fbb,
                             rng,
                             frame,
                             conf.event_message_config,
