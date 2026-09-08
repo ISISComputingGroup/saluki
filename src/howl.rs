@@ -116,7 +116,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
 
 fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
-    fbb: &mut FlatBufferBuilder,
+    mut fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
     frame: u32,
     conf: &HowlConfig,
