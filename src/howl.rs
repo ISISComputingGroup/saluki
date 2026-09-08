@@ -150,30 +150,20 @@ fn produce_messages(
     let ev44 = generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos).to_vec();
 
     for _ in 0..conf.messages_per_frame {
-        if *conf.fast {
-            let _ = producer
-                .send(
-                    BaseRecord::to(conf.event_topic)
-                        .key("")
-                        .payload(&ev44)
-                        .timestamp(now_nanos / 1_000_000),
-                )
-                .inspect_err(|e| error!("Failed to send messages: {}", e.0));
-        } else {
-            let _ = producer
-                .send(
-                    BaseRecord::to(conf.event_topic)
-                        .key("")
-                        .payload(generate_fake_events(
-                            fbb,
-                            rng,
-                            frame,
-                            conf.event_message_config,
-                            now_nanos,
-                        ))
-                        .timestamp(now_nanos / 1_000_000),
-                )
-                .inspect_err(|e| error!("Failed to send messages: {}", e.0));
+        match producer.send(
+            BaseRecord::to(conf.event_topic)
+                .key("")
+                .payload(if *conf.fast {
+                    ev44.as_slice()
+                } else {
+                    generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos)
+                })
+                .timestamp(now_nanos / 1_000_000),
+        ) {
+            Ok(_) => {}
+            Err(err) => {
+                error!("Failed to send messages: {}", err.0);
+            }
         }
     }
 
