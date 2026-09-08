@@ -153,7 +153,7 @@ fn produce_messages(
         match producer.send(
             BaseRecord::to(conf.event_topic)
                 .key("")
-                .payload(if *conf.fast {
+                .payload(if conf.fast {
                     ev44.as_slice()
                 } else {
                     generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos)
@@ -273,7 +273,7 @@ pub struct HowlConfig<'a> {
     pub frames_per_run: u32,
     pub veto_probability: f64, // 1 = always vetoed, 0 = never vetoed
     pub event_message_config: &'a EventMessageConfig,
-    pub fast: &'a bool,
+    pub fast: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
 }
 

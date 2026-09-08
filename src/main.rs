@@ -185,7 +185,7 @@ async fn main() {
                 det_max,
             },
             veto_probability,
-            fast: &fast,
+            fast,
         }),
         Commands::Count {
             topic,
