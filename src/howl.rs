@@ -116,7 +116,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
 
 fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
-    mut fbb: &mut FlatBufferBuilder,
+    fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
     frame: u32,
     conf: &HowlConfig,
@@ -147,36 +147,35 @@ fn produce_messages(
         }
     }
 
-    let ev44 = generate_fake_events(
-        &mut fbb,
-        rng,
-        frame,
-        conf.event_message_config,
-        now_nanos,
-    ).to_vec();
+    let ev44 =
+        generate_fake_events(&mut fbb, rng, frame, conf.event_message_config, now_nanos).to_vec();
 
     for _ in 0..conf.messages_per_frame {
-            if *conf.fast{
-                let _ = producer.send(BaseRecord::to(conf.event_topic)
-                .key("")
-                .payload(&ev44)
-                .timestamp(now_nanos / 1_000_000))
-                .inspect_err(|e| error!("Failed to send messages: {}", e.0));
-
-            } else {
-                let _ = producer.send(BaseRecord::to(conf.event_topic)
-                .key("")
-                .payload(generate_fake_events(
-                        &mut fbb,
-                        rng,
-                        frame,
-                        conf.event_message_config,
-                        now_nanos,
-                    )
+        if *conf.fast {
+            let _ = producer
+                .send(
+                    BaseRecord::to(conf.event_topic)
+                        .key("")
+                        .payload(&ev44)
+                        .timestamp(now_nanos / 1_000_000),
                 )
-                .timestamp(now_nanos / 1_000_000))
                 .inspect_err(|e| error!("Failed to send messages: {}", e.0));
-            }
+        } else {
+            let _ = producer
+                .send(
+                    BaseRecord::to(conf.event_topic)
+                        .key("")
+                        .payload(generate_fake_events(
+                            &mut fbb,
+                            rng,
+                            frame,
+                            conf.event_message_config,
+                            now_nanos,
+                        ))
+                        .timestamp(now_nanos / 1_000_000),
+                )
+                .inspect_err(|e| error!("Failed to send messages: {}", e.0));
+        }
     }
 
     if conf.frames_per_run > 0 && frame.is_multiple_of(conf.frames_per_run) {
