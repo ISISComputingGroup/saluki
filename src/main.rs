@@ -98,6 +98,9 @@ enum Commands {
         /// Veto probability (0 = never vetoed; 1 = always vetoed)
         #[arg(long, default_value = "0.0")]
         veto_probability: f64,
+        /// Enable howl fast mode (Disables randomised ev44 blob generation)
+        #[arg(long, action=clap::ArgAction::SetTrue)]
+        fast: bool,
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
@@ -164,6 +167,7 @@ async fn main() {
             det_min,
             det_max,
             veto_probability,
+            fast,
             kafka_config,
         } => howl(&HowlConfig {
             kafka_config,
@@ -181,6 +185,7 @@ async fn main() {
                 det_max,
             },
             veto_probability,
+            fast,
         }),
         Commands::Count {
             topic,
