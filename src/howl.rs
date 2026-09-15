@@ -9,6 +9,7 @@ use isis_streaming_data_types::flatbuffers_generated::events_ev44::{
 use isis_streaming_data_types::flatbuffers_generated::pulse_metadata_pu00::{
     Pu00Message, Pu00MessageArgs, finish_pu_00_message_buffer,
 };
+// use isis_streaming_data_types::flatbuffers_generated::veto_configuration_vc00::{};
 use isis_streaming_data_types::flatbuffers_generated::run_start_pl72::{
     RunStart, RunStartArgs, SpectraDetectorMapping, SpectraDetectorMappingArgs,
     finish_run_start_buffer,
@@ -114,6 +115,31 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
     fbb.finished_data()
 }
 
+fn get_veto_probability(conf: &HowlConfig, frame: u32) -> f64 {
+    conf.veto_probability
+        .get(frame as usize)
+        .map(|&prob| match conf.enabled_vetoes.get(frame as usize) {
+            Some(&enabled) => {
+                if enabled {
+                    prob
+                } else {
+                    0.0
+                }
+            }
+            None => prob,
+        })
+        .unwrap_or(0.0)
+}
+
+fn get_veto_name(conf: &HowlConfig, frame: u32, buf: &mut String) {
+    buf.clear();
+    buf.push_str(
+        conf.veto_names
+            .get(frame as usize)
+            .unwrap_or(&("saluki_veto_".to_string() + &frame.to_string())),
+    )
+}
+
 fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder,
@@ -121,6 +147,7 @@ fn produce_messages(
     frame: u32,
     conf: &HowlConfig,
     current_job_id: &mut String,
+    veto_name: &mut String,
 ) {
     // get current time
     let now_nanos = SystemTime::now()
@@ -130,6 +157,10 @@ fn produce_messages(
         .try_into()
         .expect("This will fail after April 11th, 2262");
 
+    let veto_probability = get_veto_probability(conf, frame);
+
+    get_veto_name(conf, 0, veto_name);
+
     match producer.send(
         BaseRecord::to(conf.event_topic)
             .key("")
@@ -137,7 +168,7 @@ fn produce_messages(
                 rng,
                 fbb,
                 now_nanos,
-                conf.veto_probability,
+                veto_probability,
             ))
             .timestamp(now_nanos / 1_000_000),
     ) {
@@ -200,6 +231,7 @@ fn produce_messages(
                 error!("Failed to send run start: {}", err.0);
             }
         }
+        // match producer send new vc00
     }
 }
 
@@ -250,6 +282,7 @@ fn generate_fake_metadata<'a>(
     veto_probability: f64,
 ) -> &'a [u8] {
     fbb.reset();
+
     let is_vetoed = rng.random_range(0.0..1.0) < veto_probability;
     let args = Pu00MessageArgs {
         reference_time: timestamp_ns,
@@ -271,7 +304,9 @@ pub struct HowlConfig<'a> {
     pub messages_per_frame: u32,
     pub frames_per_second: u32,
     pub frames_per_run: u32,
-    pub veto_probability: f64, // 1 = always vetoed, 0 = never vetoed
+    pub veto_probability: Vec<f64>,
+    pub enabled_vetoes: Vec<bool>,
+    pub veto_names: Vec<String>,
     pub event_message_config: &'a EventMessageConfig,
     pub fast: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
@@ -294,8 +329,13 @@ pub fn howl(conf: &HowlConfig) {
             as u32;
     debug!("ev44 size is {ev44_size} bytes");
 
+    let veto_probability = get_veto_probability(conf, 0);
+
+    let mut veto_name = String::new();
+    get_veto_name(conf, 0, &mut veto_name);
+
     let pu00_size =
-        generate_fake_metadata(&mut rng, &mut fbb, now_nanos, conf.veto_probability).len() as u32;
+        generate_fake_metadata(&mut rng, &mut fbb, now_nanos, veto_probability).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
     // calculate overall rate (with both ev44 and pu00)
@@ -344,6 +384,8 @@ pub fn howl(conf: &HowlConfig) {
         )
         .expect("Failed to enqueue run start message");
 
+    // match producer send new vc00
+
     let target_frame_time = Duration::from_secs_f64(1.0 / conf.frames_per_second as f64);
     debug!("Target frame time: {target_frame_time:?}");
 
@@ -353,6 +395,8 @@ pub fn howl(conf: &HowlConfig) {
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Failed to get system time");
     debug!("Target time: {target_time:?}");
+
+    let mut veto_name = String::new();
 
     loop {
         target_time += target_frame_time;
@@ -366,6 +410,7 @@ pub fn howl(conf: &HowlConfig) {
             frames,
             conf,
             &mut current_job_id,
+            &mut veto_name,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)

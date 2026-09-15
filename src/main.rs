@@ -95,9 +95,15 @@ enum Commands {
         /// Maximum detector ID
         #[arg(long, default_value = "1000")]
         det_max: i32,
-        /// Veto probability (0 = never vetoed; 1 = always vetoed)
-        #[arg(long, default_value = "0.0")]
-        veto_probability: f64,
+        /// Veto probabilities
+        #[arg(long, default_value = "[0.0]")]
+        veto_probability: Vec<f64>,
+        /// Enabled vetoes
+        #[arg(long, default_value = "false")]
+        enabled_vetoes: Vec<bool>,
+        /// Veto names
+        #[arg(long, default_value = "")]
+        veto_names: Vec<String>,
         /// Enable howl fast mode (Disables randomised ev44 blob generation)
         #[arg(long, action=clap::ArgAction::SetTrue)]
         fast: bool,
@@ -167,6 +173,8 @@ async fn main() {
             det_min,
             det_max,
             veto_probability,
+            enabled_vetoes,
+            veto_names,
             fast,
             kafka_config,
         } => howl(&HowlConfig {
@@ -185,6 +193,8 @@ async fn main() {
                 det_max,
             },
             veto_probability,
+            enabled_vetoes,
+            veto_names,
             fast,
         }),
         Commands::Count {
