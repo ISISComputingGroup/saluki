@@ -157,7 +157,7 @@ fn get_vetoes(conf: &HowlConfig, rng: &mut ThreadRng, vetoes: &mut Vec<bool>) {
     }
 }
 
-fn get_vetoes_mask(vetoes: &Vec<bool>) -> bool {
+fn get_vetoes_mask(vetoes: &[bool]) -> bool {
     vetoes.iter().all(|&b| b == vetoes[0])
 }
 
@@ -294,7 +294,7 @@ fn generate_fake_metadata<'a>(
     fbb.reset();
 
     let mut vetoes = Vec::new();
-    get_vetoes(&conf, rng, &mut vetoes);
+    get_vetoes(conf, rng, &mut vetoes);
     let vetoes_mask = if get_vetoes_mask(&vetoes) { 1 } else { 0 };
 
     let args = Pu00MessageArgs {
@@ -309,7 +309,7 @@ fn generate_fake_metadata<'a>(
     finish_pu_00_message_buffer(fbb, pu00);
 
     let mut veto_names: Vec<String> = Vec::new();
-    get_veto_names(&conf, &mut veto_names);
+    get_veto_names(conf, &mut veto_names);
 
     let args = VetoesArgs {
         timestamp: timestamp_ns,
@@ -354,7 +354,7 @@ pub fn howl(conf: &HowlConfig) {
             as u32;
     debug!("ev44 size is {ev44_size} bytes");
 
-    let pu00_size = generate_fake_metadata(&conf, &mut rng, &mut fbb, now_nanos).len() as u32;
+    let pu00_size = generate_fake_metadata(conf, &mut rng, &mut fbb, now_nanos).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
     // calculate overall rate (with both ev44 and pu00)
