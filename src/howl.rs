@@ -152,7 +152,7 @@ fn get_active_vetoes(conf: &HowlConfig, vetoes: &mut u32) {
     let mut vtemp = *vetoes;
 
     for i in 0..VETO_COUNT {
-        vtemp = (vtemp << 1) | conf.enabled_vetoes[i as usize] as u32; // as 1 or 0 for each 32 bit
+        vtemp = (vtemp << 1) | conf.enabled_vetoes[i as usize] as u32;
     }
 }
 
@@ -314,7 +314,7 @@ fn generate_veto_config<'a>(
 
     let args = VetoesArgs {
         timestamp: timestamp_ns,
-        vetoes: *vetoes_mask, // enable
+        vetoes: *vetoes_mask, // enabled
         veto_names: Some(fbb.create_vector(&veto_names_fbb)),
     };
     let vc00 = Vetoes::create(fbb, &args);
