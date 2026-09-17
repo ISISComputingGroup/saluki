@@ -137,7 +137,7 @@ fn get_veto_probability(conf: &HowlConfig, frame: i32) -> f64 {
 }
 
 fn get_veto_names_fbb<'a>(
-    veto_names: &Vec<String>,
+    veto_names: &[String],
     fbb: &mut FlatBufferBuilder<'a>,
     buf: &mut Vec<WIPOffset<&'a str>>,
 ) {
@@ -311,7 +311,7 @@ fn generate_fake_metadata<'a>(
 }
 
 fn generate_veto_config<'a>(
-    veto_names: &Vec<String>,
+    veto_names: &[String],
     fbb: &'a mut FlatBufferBuilder<'_>,
     timestamp_ns: i64,
     vetoes_mask: &u32,
