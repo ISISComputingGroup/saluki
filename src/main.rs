@@ -182,6 +182,7 @@ async fn main() {
             broker: &broker,
             event_topic: &format!("{topic_prefix}_rawEvents"),
             run_info_topic: &format!("{topic_prefix}_runInfo"),
+            veto_config_topic: &format!("{topic_prefix}_vetoConfig"),
             messages_per_frame,
             frames_per_second,
             frames_per_run,

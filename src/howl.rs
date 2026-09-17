@@ -2,7 +2,7 @@ use crate::KafkaOption;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use flatbuffers::FlatBufferBuilder;
+use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use isis_streaming_data_types::flatbuffers_generated::events_ev44::{
     Event44Message, Event44MessageArgs, finish_event_44_message_buffer,
 };
@@ -136,17 +136,20 @@ fn get_veto_probability(conf: &HowlConfig, frame: i32) -> f64 {
         .unwrap_or(0.0)
 }
 
-fn get_veto_names(conf: &HowlConfig, buf: &mut Vec<String>) {
+fn get_veto_names_fbb<'a>(
+    veto_names: &Vec<String>,
+    fbb: &mut FlatBufferBuilder<'a>,
+    buf: &mut Vec<WIPOffset<&'a str>>,
+) {
     buf.clear();
 
     for i in 0..VETO_COUNT {
-        let name = conf
-            .veto_names
+        let name = veto_names
             .get(i as usize)
             .cloned()
             .unwrap_or_else(|| format!("saluki_veto_{i}"));
 
-        buf.push(name.to_string());
+        buf.push(fbb.create_string(&name.to_string()));
     }
 }
 
@@ -168,6 +171,7 @@ fn produce_messages(
     frame: i64,
     conf: &HowlConfig,
     current_job_id: &mut String,
+    vetoes_mask: &u32,
 ) {
     // get current time
     let now_nanos = SystemTime::now()
@@ -180,7 +184,7 @@ fn produce_messages(
     match producer.send(
         BaseRecord::to(conf.event_topic)
             .key("")
-            .payload(generate_fake_metadata(conf, rng, fbb, now_nanos))
+            .payload(generate_fake_metadata(vetoes_mask, fbb, now_nanos))
             .timestamp(now_nanos / 1_000_000),
     ) {
         Ok(_) => {}
@@ -286,35 +290,39 @@ fn generate_fake_events<'a>(
 }
 
 fn generate_fake_metadata<'a>(
-    conf: &HowlConfig,
-    rng: &mut ThreadRng,
+    vetoes_mask: &u32,
     fbb: &'a mut FlatBufferBuilder<'_>,
     timestamp_ns: i64,
 ) -> &'a [u8] {
     fbb.reset();
-
-    let mut vetoes = Vec::new();
-    get_vetoes(conf, rng, &mut vetoes);
-    let vetoes_mask = if get_vetoes_mask(&vetoes) { 1 } else { 0 };
 
     let args = Pu00MessageArgs {
         reference_time: timestamp_ns,
         message_id: 0,
         source_name: Some(fbb.create_string("saluki")),
         period_number: Some(0),
-        vetos: Some(vetoes_mask),
+        vetos: Some(*vetoes_mask),
         proton_charge: Some(0.1),
     };
     let pu00 = Pu00Message::create(fbb, &args);
     finish_pu_00_message_buffer(fbb, pu00);
 
-    let mut veto_names: Vec<String> = Vec::new();
-    get_veto_names(conf, &mut veto_names);
+    fbb.finished_data()
+}
+
+fn generate_veto_config<'a>(
+    veto_names: &Vec<String>,
+    fbb: &'a mut FlatBufferBuilder<'_>,
+    timestamp_ns: i64,
+    vetoes_mask: &u32,
+) -> &'a [u8] {
+    let mut veto_names_fbb: Vec<WIPOffset<&str>> = Vec::new();
+    get_veto_names_fbb(veto_names, fbb, &mut veto_names_fbb);
 
     let args = VetoesArgs {
         timestamp: timestamp_ns,
-        vetoes: vetoes_mask,
-        // names: veto_names,
+        vetoes: *vetoes_mask,
+        veto_names: Some(fbb.create_vector(&veto_names_fbb)),
     };
     let vc00 = Vetoes::create(fbb, &args);
     finish_vetoes_buffer(fbb, vc00);
@@ -326,6 +334,7 @@ pub struct HowlConfig<'a> {
     pub broker: &'a str,
     pub event_topic: &'a str,
     pub run_info_topic: &'a str,
+    pub veto_config_topic: &'a str,
     pub messages_per_frame: u32,
     pub frames_per_second: u32,
     pub frames_per_run: u32,
@@ -342,6 +351,10 @@ pub fn howl(conf: &HowlConfig) {
     let mut fbb = FlatBufferBuilder::new();
     let mut rng = rand::rng();
 
+    let mut vetoes = Vec::new();
+    get_vetoes(conf, &mut rng, &mut vetoes);
+    let vetoes_mask = if get_vetoes_mask(&vetoes) { 1 } else { 0 };
+
     let now_nanos = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Failed to get system time")
@@ -354,7 +367,7 @@ pub fn howl(conf: &HowlConfig) {
             as u32;
     debug!("ev44 size is {ev44_size} bytes");
 
-    let pu00_size = generate_fake_metadata(conf, &mut rng, &mut fbb, now_nanos).len() as u32;
+    let pu00_size = generate_fake_metadata(&vetoes_mask, &mut fbb, now_nanos).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
     // calculate overall rate (with both ev44 and pu00)
@@ -403,8 +416,6 @@ pub fn howl(conf: &HowlConfig) {
         )
         .expect("Failed to enqueue run start message");
 
-    // match producer send new vc00
-
     let target_frame_time = Duration::from_secs_f64(1.0 / conf.frames_per_second as f64);
     debug!("Target frame time: {target_frame_time:?}");
 
@@ -414,6 +425,20 @@ pub fn howl(conf: &HowlConfig) {
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Failed to get system time");
     debug!("Target time: {target_time:?}");
+
+    producer
+        .send(
+            BaseRecord::to(conf.veto_config_topic)
+                .key("")
+                .payload(generate_veto_config(
+                    &conf.veto_names,
+                    &mut fbb,
+                    now_nanos,
+                    &vetoes_mask,
+                ))
+                .timestamp(now_nanos / 1_000_000),
+        )
+        .expect("Failed to enqueue run veto configuration message");
 
     loop {
         target_time += target_frame_time;
@@ -427,6 +452,7 @@ pub fn howl(conf: &HowlConfig) {
             frames,
             conf,
             &mut current_job_id,
+            &vetoes_mask,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
