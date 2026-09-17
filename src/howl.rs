@@ -501,13 +501,8 @@ pub fn howl(conf: &HowlConfig) {
 
     let mut current_job_id = Uuid::new_v4().to_string();
 
-    // send run start
     send_run_start(&mut producer, &mut fbb, conf, &current_job_id, now_nanos);
-
-    // send veto config
     send_veto_config(&mut producer, &mut fbb, conf, &enabled_vetoes, now_nanos);
-
-    // start howling
     howl_begin(
         &mut producer,
         &mut fbb,
