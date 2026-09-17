@@ -330,47 +330,20 @@ fn generate_veto_config<'a>(
     fbb.finished_data()
 }
 
-pub struct HowlConfig<'a> {
-    pub broker: &'a str,
-    pub event_topic: &'a str,
-    pub run_info_topic: &'a str,
-    pub veto_config_topic: &'a str,
-    pub messages_per_frame: u32,
-    pub frames_per_second: u32,
-    pub frames_per_run: u32,
-    pub veto_probability: Vec<f64>,
-    pub enabled_vetoes: Vec<bool>,
-    pub veto_names: Vec<String>,
-    pub event_message_config: &'a EventMessageConfig,
-    pub fast: bool,
-    pub kafka_config: Option<Vec<KafkaOption>>,
-}
-
-pub fn howl(conf: &HowlConfig) {
-    // create producer
-    let mut fbb = FlatBufferBuilder::new();
-    let mut rng = rand::rng();
-
-    let mut vetoes = Vec::new();
-    get_vetoes(conf, &mut rng, &mut vetoes);
-    let vetoes_mask = if get_vetoes_mask(&vetoes) { 1 } else { 0 };
-
-    let now_nanos = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("Failed to get system time")
-        .as_nanos()
-        .try_into()
-        .expect("This will fail after April 11th, 2262");
-
+fn calculate_data_rate(
+    fbb: &mut FlatBufferBuilder<'_>,
+    rng: &mut ThreadRng,
+    conf: &HowlConfig,
+    timestamp_ns: i64,
+    vetoes_mask: &u32,
+) {
     let ev44_size =
-        generate_fake_events(&mut fbb, &mut rng, 0, conf.event_message_config, now_nanos).len()
-            as u32;
+        generate_fake_events(fbb, rng, 0, conf.event_message_config, timestamp_ns).len() as u32;
     debug!("ev44 size is {ev44_size} bytes");
 
-    let pu00_size = generate_fake_metadata(&vetoes_mask, &mut fbb, now_nanos).len() as u32;
+    let pu00_size = generate_fake_metadata(vetoes_mask, fbb, timestamp_ns).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
-    // calculate overall rate (with both ev44 and pu00)
     let rate_bytes_per_sec = ev44_size * conf.messages_per_frame * conf.frames_per_second
         + pu00_size * conf.frames_per_second;
     debug!("bytes per second: {rate_bytes_per_sec}");
@@ -383,39 +356,60 @@ pub fn howl(conf: &HowlConfig) {
     );
     println!("Each pu00 is {pu00_size} bytes");
     println!("Each ev44 is {ev44_size} bytes");
+}
 
-    let mut config: ClientConfig = ClientConfig::new();
-    config.set("bootstrap.servers", conf.broker);
-
-    if let Some(kafka_options) = &conf.kafka_config {
-        for option in kafka_options {
-            println!(
-                "Setting Kafka config option {}={}",
-                option.key, option.value
-            );
-            config.set(&option.key, &option.value);
-        }
-    }
-
-    let producer: ThreadedProducer<DefaultProducerContext> =
-        config.create().expect("Producer creation error");
-
-    let mut current_job_id = Uuid::new_v4().to_string();
-
+fn send_run_start(
+    producer: &mut ThreadedProducer<DefaultProducerContext>,
+    fbb: &mut FlatBufferBuilder<'_>,
+    conf: &HowlConfig,
+    current_job_id: &str,
+    now_nanos: i64,
+) {
     producer
         .send(
             BaseRecord::to(conf.run_info_topic)
                 .key("")
                 .payload(generate_run_start(
-                    &mut fbb,
+                    fbb,
                     conf.event_message_config.det_max,
                     conf.event_topic,
-                    &current_job_id,
+                    current_job_id,
                 ))
                 .timestamp(now_nanos / 1_000_000),
         )
         .expect("Failed to enqueue run start message");
+}
 
+fn send_veto_config(
+    producer: &mut ThreadedProducer<DefaultProducerContext>,
+    fbb: &mut FlatBufferBuilder<'_>,
+    conf: &HowlConfig,
+    vetoes_mask: &u32,
+    now_nanos: i64,
+) {
+    producer
+        .send(
+            BaseRecord::to(conf.veto_config_topic)
+                .key("")
+                .payload(generate_veto_config(
+                    &conf.veto_names,
+                    fbb,
+                    now_nanos,
+                    vetoes_mask,
+                ))
+                .timestamp(now_nanos / 1_000_000),
+        )
+        .expect("Failed to enqueue run veto configuration message");
+}
+
+fn howl_begin(
+    producer: &mut ThreadedProducer<DefaultProducerContext>,
+    fbb: &mut FlatBufferBuilder<'_>,
+    rng: &mut ThreadRng,
+    conf: &HowlConfig,
+    current_job_id: &mut String,
+    vetoes_mask: &u32,
+) {
     let target_frame_time = Duration::from_secs_f64(1.0 / conf.frames_per_second as f64);
     debug!("Target frame time: {target_frame_time:?}");
 
@@ -426,33 +420,19 @@ pub fn howl(conf: &HowlConfig) {
         .expect("Failed to get system time");
     debug!("Target time: {target_time:?}");
 
-    producer
-        .send(
-            BaseRecord::to(conf.veto_config_topic)
-                .key("")
-                .payload(generate_veto_config(
-                    &conf.veto_names,
-                    &mut fbb,
-                    now_nanos,
-                    &vetoes_mask,
-                ))
-                .timestamp(now_nanos / 1_000_000),
-        )
-        .expect("Failed to enqueue run veto configuration message");
-
     loop {
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
         frames += 1;
         debug!("current job id: {current_job_id}");
         produce_messages(
-            &producer,
-            &mut fbb,
-            &mut rng,
+            producer,
+            fbb,
+            rng,
             frames,
             conf,
-            &mut current_job_id,
-            &vetoes_mask,
+            current_job_id,
+            vetoes_mask,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -472,4 +452,73 @@ pub fn howl(conf: &HowlConfig) {
             )
         }
     }
+}
+
+pub struct HowlConfig<'a> {
+    pub broker: &'a str,
+    pub event_topic: &'a str,
+    pub run_info_topic: &'a str,
+    pub veto_config_topic: &'a str,
+    pub messages_per_frame: u32,
+    pub frames_per_second: u32,
+    pub frames_per_run: u32,
+    pub veto_probability: Vec<f64>,
+    pub enabled_vetoes: Vec<bool>,
+    pub veto_names: Vec<String>,
+    pub event_message_config: &'a EventMessageConfig,
+    pub fast: bool,
+    pub kafka_config: Option<Vec<KafkaOption>>,
+}
+
+pub fn howl(conf: &HowlConfig) {
+    let mut fbb = FlatBufferBuilder::new();
+    let mut rng = rand::rng();
+
+    let mut vetoes = Vec::new();
+    get_vetoes(conf, &mut rng, &mut vetoes);
+    let vetoes_mask = if get_vetoes_mask(&vetoes) { 1 } else { 0 };
+
+    let now_nanos = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Failed to get system time")
+        .as_nanos()
+        .try_into()
+        .expect("This will fail after April 11th, 2262");
+
+    calculate_data_rate(&mut fbb, &mut rng, conf, now_nanos, &vetoes_mask);
+
+    let mut config: ClientConfig = ClientConfig::new();
+    config.set("bootstrap.servers", conf.broker);
+
+    if let Some(kafka_options) = &conf.kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            config.set(&option.key, &option.value);
+        }
+    }
+
+    // create producer
+    let mut producer: ThreadedProducer<DefaultProducerContext> =
+        config.create().expect("Producer creation error");
+
+    let mut current_job_id = Uuid::new_v4().to_string();
+
+    // send run start
+    send_run_start(&mut producer, &mut fbb, conf, &current_job_id, now_nanos);
+
+    // send veto config
+    send_veto_config(&mut producer, &mut fbb, conf, &vetoes_mask, now_nanos);
+
+    // start howling
+    howl_begin(
+        &mut producer,
+        &mut fbb,
+        &mut rng,
+        conf,
+        &mut current_job_id,
+        &vetoes_mask,
+    );
 }
