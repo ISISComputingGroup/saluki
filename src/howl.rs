@@ -120,20 +120,6 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
     fbb.finished_data()
 }
 
-fn get_veto_probability(conf: &HowlConfig, frame: i32) -> f64 {
-    let idx = frame as usize;
-
-    let enabled = conf.enabled_vetoes.get(idx).copied().unwrap_or(false); // Assume no veto if not found
-    let prob = conf.veto_probability.get(idx).copied().unwrap_or(0.0); // Assume 0% probability of veto if not found
-
-    if enabled {
-        // If explicitly found to be enabled, 100% chance of veto
-        return 1.0;
-    }
-
-    prob
-}
-
 fn get_veto_names_fbb<'a>(
     veto_names: &[String],
     fbb: &mut FlatBufferBuilder<'a>,
@@ -151,19 +137,23 @@ fn get_veto_names_fbb<'a>(
     }
 }
 
-fn get_vetoes(conf: &HowlConfig, rng: &mut ThreadRng, vetoes: &mut Vec<bool>) {
-    vetoes.clear();
+fn get_enabled_vetoes(conf: &HowlConfig, rng: &mut ThreadRng, vetoes: &mut u32) {
+    let mut vtemp = *vetoes;
 
-    let mut veto: bool;
     for i in 0..VETO_COUNT {
-        veto = rng.random_range(0.0..1.0) < get_veto_probability(conf, i);
-        vetoes.push(veto);
-        println!("{}", veto);
+        let active = rng.random_bool(conf.veto_probability[i as usize]);
+        vtemp = (vtemp << 1) | active as u32;
     }
+
+    *vetoes = vtemp;
 }
 
-fn get_vetoes_mask(vetoes: &[bool]) -> bool {
-    vetoes.iter().all(|&b| b == vetoes[0]) // are all entries equal to the first
+fn get_active_vetoes(conf: &HowlConfig, vetoes: &mut u32) {
+    let mut vtemp = *vetoes;
+
+    for i in 0..VETO_COUNT {
+        vtemp = (vtemp << 1) | conf.enabled_vetoes[i as usize] as u32; // as 1 or 0 for each 32 bit
+    }
 }
 
 fn produce_messages(
@@ -303,7 +293,7 @@ fn generate_fake_metadata<'a>(
         message_id: 0,
         source_name: Some(fbb.create_string("saluki")),
         period_number: Some(0),
-        vetos: Some(*vetoes_mask),
+        vetos: Some(*vetoes_mask), // active
         proton_charge: Some(0.1),
     };
     let pu00 = Pu00Message::create(fbb, &args);
@@ -324,7 +314,7 @@ fn generate_veto_config<'a>(
 
     let args = VetoesArgs {
         timestamp: timestamp_ns,
-        vetoes: *vetoes_mask,
+        vetoes: *vetoes_mask, // enable
         veto_names: Some(fbb.create_vector(&veto_names_fbb)),
     };
     let vc00 = Vetoes::create(fbb, &args);
@@ -477,9 +467,11 @@ pub fn howl(conf: &HowlConfig) {
     let mut fbb = FlatBufferBuilder::new();
     let mut rng = rand::rng();
 
-    let mut vetoes = Vec::new();
-    get_vetoes(conf, &mut rng, &mut vetoes);
-    let vetoes_mask = if get_vetoes_mask(&vetoes) { 1 } else { 0 };
+    let mut active_vetoes: u32 = 0;
+    let mut enabled_vetoes: u32 = 0;
+
+    get_active_vetoes(conf, &mut active_vetoes);
+    get_enabled_vetoes(conf, &mut rng, &mut enabled_vetoes);
 
     let now_nanos = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -488,7 +480,7 @@ pub fn howl(conf: &HowlConfig) {
         .try_into()
         .expect("This will fail after April 11th, 2262");
 
-    calculate_data_rate(&mut fbb, &mut rng, conf, now_nanos, &vetoes_mask);
+    calculate_data_rate(&mut fbb, &mut rng, conf, now_nanos, &active_vetoes);
 
     let mut config: ClientConfig = ClientConfig::new();
     config.set("bootstrap.servers", conf.broker);
@@ -513,7 +505,7 @@ pub fn howl(conf: &HowlConfig) {
     send_run_start(&mut producer, &mut fbb, conf, &current_job_id, now_nanos);
 
     // send veto config
-    send_veto_config(&mut producer, &mut fbb, conf, &vetoes_mask, now_nanos);
+    send_veto_config(&mut producer, &mut fbb, conf, &enabled_vetoes, now_nanos);
 
     // start howling
     howl_begin(
@@ -522,6 +514,6 @@ pub fn howl(conf: &HowlConfig) {
         &mut rng,
         conf,
         &mut current_job_id,
-        &vetoes_mask,
+        &active_vetoes,
     );
 }
