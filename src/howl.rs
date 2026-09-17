@@ -168,7 +168,7 @@ fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
-    frame: i64,
+    frame: u32,
     conf: &HowlConfig,
     current_job_id: &mut String,
     vetoes_mask: &u32,
@@ -213,7 +213,7 @@ fn produce_messages(
         }
     }
 
-    if conf.frames_per_run > 0 && (frame as u32).is_multiple_of(conf.frames_per_run) {
+    if conf.frames_per_run > 0 && frame.is_multiple_of(conf.frames_per_run) {
         info!(
             "Starting new run after {} simulated frames",
             conf.frames_per_run
@@ -260,7 +260,7 @@ pub struct EventMessageConfig {
 fn generate_fake_events<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
     rng: &mut ThreadRng,
-    msg_id: i64,
+    msg_id: u32,
     conf: &EventMessageConfig,
     timestamp_ns: i64,
 ) -> &'a [u8] {
@@ -278,7 +278,7 @@ fn generate_fake_events<'a>(
 
     let args = Event44MessageArgs {
         source_name: Some(fbb.create_string("saluki")),
-        message_id: msg_id,
+        message_id: msg_id as i64,
         reference_time: Some(fbb.create_vector(&[timestamp_ns])),
         reference_time_index: Some(fbb.create_vector(&[0])),
         time_of_flight: Some(fbb.create_vector(&tofs)),
@@ -413,7 +413,7 @@ fn howl_begin(
     let target_frame_time = Duration::from_secs_f64(1.0 / conf.frames_per_second as f64);
     debug!("Target frame time: {target_frame_time:?}");
 
-    let mut frames: i64 = 0;
+    let mut frames: u32 = 0;
 
     let mut target_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
