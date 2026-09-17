@@ -121,19 +121,17 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
 }
 
 fn get_veto_probability(conf: &HowlConfig, frame: i32) -> f64 {
-    conf.veto_probability
-        .get(frame as usize)
-        .map(|&prob| match conf.enabled_vetoes.get(frame as usize) {
-            Some(&enabled) => {
-                if enabled {
-                    prob
-                } else {
-                    0.0
-                }
-            }
-            None => prob,
-        })
-        .unwrap_or(0.0)
+    let idx = frame as usize;
+
+    let enabled = conf.enabled_vetoes.get(idx).copied().unwrap_or(false); // Assume no veto if not found
+    let prob = conf.veto_probability.get(idx).copied().unwrap_or(0.0); // Assume 0% probability of veto if not found
+
+    if enabled {
+        // If explicitly found to be enabled, 100% chance of veto
+        return 1.0;
+    }
+
+    prob
 }
 
 fn get_veto_names_fbb<'a>(
@@ -155,13 +153,17 @@ fn get_veto_names_fbb<'a>(
 
 fn get_vetoes(conf: &HowlConfig, rng: &mut ThreadRng, vetoes: &mut Vec<bool>) {
     vetoes.clear();
+
+    let mut veto: bool;
     for i in 0..VETO_COUNT {
-        vetoes.push(rng.random_range(0.0..1.0) < get_veto_probability(conf, i));
+        veto = rng.random_range(0.0..1.0) < get_veto_probability(conf, i);
+        vetoes.push(veto);
+        println!("{}", veto);
     }
 }
 
 fn get_vetoes_mask(vetoes: &[bool]) -> bool {
-    vetoes.iter().all(|&b| b == vetoes[0])
+    vetoes.iter().all(|&b| b == vetoes[0]) // are all entries equal to the first
 }
 
 fn produce_messages(
@@ -316,6 +318,7 @@ fn generate_veto_config<'a>(
     timestamp_ns: i64,
     vetoes_mask: &u32,
 ) -> &'a [u8] {
+    fbb.reset();
     let mut veto_names_fbb: Vec<WIPOffset<&str>> = Vec::new();
     get_veto_names_fbb(veto_names, fbb, &mut veto_names_fbb);
 

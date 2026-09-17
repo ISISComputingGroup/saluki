@@ -96,13 +96,13 @@ enum Commands {
         #[arg(long, default_value = "1000")]
         det_max: i32,
         /// Veto probabilities
-        #[arg(long, default_value = "[0.0]")]
+        #[arg(long, num_args = 0..33, value_delimiter = ' ')]
         veto_probability: Vec<f64>,
         /// Enabled vetoes
-        #[arg(long, default_value = "false")]
+        #[arg(long, num_args = 0..33, value_delimiter = ' ')]
         enabled_vetoes: Vec<bool>,
         /// Veto names
-        #[arg(long, default_value = "")]
+        #[arg(long, num_args = 0..33, value_delimiter = ' ')]
         veto_names: Vec<String>,
         /// Enable howl fast mode (Disables randomised ev44 blob generation)
         #[arg(long, action=clap::ArgAction::SetTrue)]
