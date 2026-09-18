@@ -29,7 +29,7 @@ use rdkafka::producer::{BaseRecord, DefaultProducerContext, ThreadedProducer};
 use serde_json::json;
 use uuid::Uuid;
 
-const VETO_COUNT: i32 = 32;
+const VETO_COUNT: usize = 32;
 
 fn generate_run_start<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
@@ -129,7 +129,7 @@ fn get_veto_names_fbb<'a>(
 
     for i in 0..VETO_COUNT {
         let name = veto_names
-            .get(i as usize)
+            .get(i)
             .cloned()
             .unwrap_or_else(|| format!("saluki_veto_{i}"));
 
@@ -137,23 +137,25 @@ fn get_veto_names_fbb<'a>(
     }
 }
 
-fn get_enabled_vetoes(conf: &HowlConfig, rng: &mut ThreadRng, vetoes: &mut u32) {
-    let mut vtemp = *vetoes;
+fn get_enabled_vetoes(conf: &HowlConfig, rng: &mut ThreadRng) -> u32 {
+    let mut vetoes = 0;
 
     for i in 0..VETO_COUNT {
-        let active = rng.random_bool(conf.veto_probability[i as usize]);
-        vtemp = (vtemp << 1) | active as u32;
+        let active = rng.random_bool(conf.veto_probability[i]);
+        vetoes = (vetoes << 1) | active as u32;
     }
 
-    *vetoes = vtemp;
+    vetoes
 }
 
-fn get_active_vetoes(conf: &HowlConfig, vetoes: &mut u32) {
-    let mut vtemp = *vetoes;
+fn get_active_vetoes(conf: &HowlConfig) -> u32 {
+    let mut vetoes = 0;
 
     for i in 0..VETO_COUNT {
-        vtemp = (vtemp << 1) | conf.enabled_vetoes[i as usize] as u32;
+        vetoes = (vetoes << 1) | conf.enabled_vetoes[i] as u32;
     }
+
+    vetoes
 }
 
 fn produce_messages(
@@ -467,11 +469,8 @@ pub fn howl(conf: &HowlConfig) {
     let mut fbb = FlatBufferBuilder::new();
     let mut rng = rand::rng();
 
-    let mut active_vetoes: u32 = 0;
-    let mut enabled_vetoes: u32 = 0;
-
-    get_active_vetoes(conf, &mut active_vetoes);
-    get_enabled_vetoes(conf, &mut rng, &mut enabled_vetoes);
+    let active_vetoes = get_active_vetoes(conf);
+    let enabled_vetoes = get_enabled_vetoes(conf, &mut rng);
 
     let now_nanos = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
