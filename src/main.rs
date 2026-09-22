@@ -8,7 +8,7 @@ use crate::cli_utils::BrokerAndOptionalTopic;
 use crate::cli_utils::KafkaOption;
 use crate::consume::ConsumeConfig;
 use crate::count::count;
-use crate::howl::{EventMessageConfig, HowlConfig, howl};
+use crate::howl::{EventMessageConfig, HowlConfig, VETO_COUNT, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
@@ -96,13 +96,13 @@ enum Commands {
         #[arg(long, default_value = "1000")]
         det_max: i32,
         /// Veto probabilities
-        #[arg(long, num_args = 0..33, value_delimiter = ' ')]
+        #[arg(long, num_args = 0..VETO_COUNT+1, value_delimiter = ' ')]
         veto_probability: Vec<f64>,
         /// Enabled vetoes
-        #[arg(long, num_args = 0..33, value_delimiter = ' ')]
+        #[arg(long, num_args = 0..VETO_COUNT+1, value_delimiter = ' ')]
         enabled_vetoes: Vec<bool>,
         /// Veto names
-        #[arg(long, num_args = 0..33, value_delimiter = ' ')]
+        #[arg(long, num_args = 0..VETO_COUNT+1, value_delimiter = ' ')]
         veto_names: Vec<String>,
         /// Enable howl fast mode (Disables randomised ev44 blob generation)
         #[arg(long, action=clap::ArgAction::SetTrue)]

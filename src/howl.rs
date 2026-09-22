@@ -29,7 +29,7 @@ use rdkafka::producer::{BaseRecord, DefaultProducerContext, ThreadedProducer};
 use serde_json::json;
 use uuid::Uuid;
 
-const VETO_COUNT: usize = 32;
+pub const VETO_COUNT: usize = 32;
 
 fn generate_run_start<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
@@ -131,7 +131,7 @@ fn get_veto_names_fbb<'a>(
         let name = veto_names
             .get(i)
             .cloned()
-            .unwrap_or_else(|| format!("saluki_veto_{i}"));
+            .unwrap_or(format!("saluki_veto_{i}"));
 
         buf.push(fbb.create_string(&name.to_string()));
     }
@@ -139,10 +139,11 @@ fn get_veto_names_fbb<'a>(
 
 fn get_enabled_vetoes(conf: &HowlConfig, rng: &mut ThreadRng) -> u32 {
     let mut vetoes = 0;
+    let mut prob;
 
     for i in 0..VETO_COUNT {
-        let active = rng.random_bool(conf.veto_probability[i]);
-        vetoes = (vetoes << 1) | active as u32;
+        prob = conf.veto_probability.get(i).cloned().unwrap_or(0.0);
+        vetoes = (vetoes << 1) | rng.random_bool(prob) as u32;
     }
 
     vetoes
@@ -150,9 +151,11 @@ fn get_enabled_vetoes(conf: &HowlConfig, rng: &mut ThreadRng) -> u32 {
 
 fn get_active_vetoes(conf: &HowlConfig) -> u32 {
     let mut vetoes = 0;
+    let mut active;
 
     for i in 0..VETO_COUNT {
-        vetoes = (vetoes << 1) | conf.enabled_vetoes[i] as u32;
+        active = conf.enabled_vetoes.get(i).cloned().unwrap_or(false);
+        vetoes = (vetoes << 1) | active as u32;
     }
 
     vetoes
