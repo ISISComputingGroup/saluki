@@ -162,14 +162,16 @@ fn get_active_vetoes(conf: &HowlConfig) -> u32 {
     vetoes
 }
 
+#[allow(clippy::too_many_arguments)]
 fn produce_messages(
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
     frame: u32,
     conf: &HowlConfig,
-    vetoes_mask: &u32,
+    active_vetoes: &u32,
     enabled_vetoes: &u32,
+    current_job_id: &mut String,
 ) {
     // get current time
     let now_nanos = SystemTime::now()
@@ -180,23 +182,23 @@ fn produce_messages(
         .expect("This will fail after April 11th, 2262");
 
     if conf.frames_per_run > 0 && frame.is_multiple_of(conf.frames_per_run) {
-        let current_job_id = Uuid::new_v4().to_string();
-
         info!(
             "Starting new run after {} simulated frames",
             conf.frames_per_run
         );
 
         if frame != 0 {
-            send_run_stop(producer, fbb, conf, &current_job_id, now_nanos);
+            send_run_stop(producer, fbb, conf, current_job_id, now_nanos);
         }
 
-        send_run_start(producer, fbb, conf, &current_job_id, now_nanos);
+        *current_job_id = Uuid::new_v4().to_string();
+
+        send_run_start(producer, fbb, conf, current_job_id, now_nanos);
         send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
     }
 
-    send_run_metadata(producer, fbb, conf, vetoes_mask, now_nanos);
-    send_run_data(producer, fbb, conf, rng, frame, now_nanos);
+    send_frame_metadata(producer, fbb, conf, active_vetoes, now_nanos);
+    send_frame_data(producer, fbb, conf, rng, frame, now_nanos);
 }
 
 pub struct EventMessageConfig {
@@ -309,7 +311,7 @@ fn calculate_data_rate(
     println!("Each ev44 is {ev44_size} bytes");
 }
 
-fn send_run_metadata(
+fn send_frame_metadata(
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder<'_>,
     conf: &HowlConfig,
@@ -329,7 +331,7 @@ fn send_run_metadata(
     }
 }
 
-fn send_run_data(
+fn send_frame_data(
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder<'_>,
     conf: &HowlConfig,
@@ -439,6 +441,8 @@ fn howl_begin(
         .expect("Failed to get system time");
     debug!("Target time: {target_time:?}");
 
+    let mut current_job_id = Uuid::new_v4().to_string();
+
     loop {
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
@@ -451,6 +455,7 @@ fn howl_begin(
             conf,
             active_vetoes,
             enabled_vetoes,
+            &mut current_job_id,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
