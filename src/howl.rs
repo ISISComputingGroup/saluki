@@ -13,6 +13,7 @@ use isis_streaming_data_types::flatbuffers_generated::veto_configuration_vc00::{
     Vetoes, VetoesArgs, finish_vetoes_buffer,
 };
 
+use crate::cli_utils::set_kafka_options;
 use isis_streaming_data_types::flatbuffers_generated::run_start_pl72::{
     RunStart, RunStartArgs, SpectraDetectorMapping, SpectraDetectorMappingArgs,
     finish_run_start_buffer,
@@ -484,22 +485,13 @@ pub fn howl(conf: &HowlConfig) {
 
     calculate_data_rate(&mut fbb, &mut rng, conf, now_nanos, &active_vetoes);
 
-    let mut config: ClientConfig = ClientConfig::new();
-    config.set("bootstrap.servers", conf.broker);
-
-    if let Some(kafka_options) = &conf.kafka_config {
-        for option in kafka_options {
-            println!(
-                "Setting Kafka config option {}={}",
-                option.key, option.value
-            );
-            config.set(&option.key, &option.value);
-        }
-    }
+    let mut client_config: ClientConfig = ClientConfig::new();
+    client_config.set("bootstrap.servers", conf.broker);
+    set_kafka_options(&mut client_config, &conf.kafka_config);
 
     // create producer
     let mut producer: ThreadedProducer<DefaultProducerContext> =
-        config.create().expect("Producer creation error");
+        client_config.create().expect("Producer creation error");
 
     let mut current_job_id = Uuid::new_v4().to_string();
 

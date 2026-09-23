@@ -1,5 +1,5 @@
 use crate::KafkaOption;
-use crate::cli_utils::BrokerAndTopic;
+use crate::cli_utils::{BrokerAndTopic, set_kafka_options};
 
 use isis_streaming_data_types::{deserialize_message, get_schema_id};
 use log::{debug, error, info};
@@ -36,15 +36,7 @@ pub fn consume(config: &ConsumeConfig) {
     client_config.set("group.id", Uuid::new_v4().to_string());
     client_config.set("bootstrap.servers", config.topic.broker());
 
-    if let Some(kafka_options) = &config.kafka_config {
-        for option in kafka_options {
-            println!(
-                "Setting Kafka config option {}={}",
-                option.key, option.value
-            );
-            client_config.set(&option.key, &option.value);
-        }
-    }
+    set_kafka_options(&mut client_config, &config.kafka_config);
 
     let consumer: BaseConsumer = client_config.create().expect("Base creation failed");
 
