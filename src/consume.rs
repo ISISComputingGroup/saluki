@@ -35,7 +35,6 @@ pub fn consume(config: &ConsumeConfig) {
     let mut client_config = ClientConfig::new();
     client_config.set("group.id", Uuid::new_v4().to_string());
     client_config.set("bootstrap.servers", config.topic.broker());
-
     set_kafka_options(&mut client_config, &config.kafka_config);
 
     let consumer: BaseConsumer = client_config.create().expect("Base creation failed");

@@ -1,5 +1,5 @@
 use crate::KafkaOption;
-use crate::cli_utils::BrokerAndTopic;
+use crate::cli_utils::{set_kafka_options, BrokerAndTopic};
 use futures::stream::StreamExt;
 use log::error;
 use rdkafka::consumer::{Consumer, DefaultConsumerContext, StreamConsumer};
@@ -15,16 +15,7 @@ pub async fn count(
     let mut config = ClientConfig::new();
     config.set("group.id", Uuid::new_v4().to_string());
     config.set("bootstrap.servers", topic.broker());
-
-    if let Some(kafka_options) = kafka_config {
-        for option in kafka_options {
-            println!(
-                "Setting Kafka config option {}={}",
-                option.key, option.value
-            );
-            config.set(&option.key, &option.value);
-        }
-    }
+    set_kafka_options(&mut config, &kafka_config);
 
     let consumer: StreamConsumer<DefaultConsumerContext> =
         config.create().expect("Consumer creation failed");
