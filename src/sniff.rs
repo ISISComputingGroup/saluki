@@ -1,5 +1,5 @@
 use crate::KafkaOption;
-use crate::cli_utils::BrokerAndOptionalTopic;
+use crate::cli_utils::{BrokerAndOptionalTopic, set_kafka_options};
 use rdkafka::ClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer};
 use std::time::Duration;
@@ -7,16 +7,7 @@ use std::time::Duration;
 pub fn sniff(broker: &BrokerAndOptionalTopic, kafka_config: Option<Vec<KafkaOption>>) {
     let mut config = ClientConfig::new();
     config.set("bootstrap.servers", broker.broker());
-
-    if let Some(kafka_options) = kafka_config {
-        for option in kafka_options {
-            println!(
-                "Setting Kafka config option {}={}",
-                option.key, option.value
-            );
-            config.set(&option.key, &option.value);
-        }
-    }
+    set_kafka_options(&mut config, &kafka_config);
 
     let consumer: BaseConsumer = config.create().expect("Consumer creation failed");
 
