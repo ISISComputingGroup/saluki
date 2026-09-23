@@ -189,9 +189,8 @@ fn produce_messages(
 
         if frame != 0 {
             send_run_stop(producer, fbb, conf, current_job_id, now_nanos);
+            *current_job_id = Uuid::new_v4().to_string();
         }
-
-        *current_job_id = Uuid::new_v4().to_string();
 
         send_run_start(producer, fbb, conf, current_job_id, now_nanos);
         send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
