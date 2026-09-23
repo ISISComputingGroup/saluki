@@ -168,8 +168,8 @@ fn produce_messages(
     rng: &mut ThreadRng,
     frame: u32,
     conf: &HowlConfig,
-    current_job_id: &mut String,
     vetoes_mask: &u32,
+    enabled_vetoes: &u32,
 ) {
     // get current time
     let now_nanos = SystemTime::now()
@@ -179,72 +179,24 @@ fn produce_messages(
         .try_into()
         .expect("This will fail after April 11th, 2262");
 
-    match producer.send(
-        BaseRecord::to(conf.event_topic)
-            .key("")
-            .payload(generate_fake_metadata(vetoes_mask, fbb, now_nanos))
-            .timestamp(now_nanos / 1_000_000),
-    ) {
-        Ok(_) => {}
-        Err(err) => {
-            error!("Failed to send messages: {}", err.0);
-        }
-    }
-
-    let ev44 = generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos).to_vec();
-
-    for _ in 0..conf.messages_per_frame {
-        match producer.send(
-            BaseRecord::to(conf.event_topic)
-                .key("")
-                .payload(if conf.fast {
-                    ev44.as_slice()
-                } else {
-                    generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos)
-                })
-                .timestamp(now_nanos / 1_000_000),
-        ) {
-            Ok(_) => {}
-            Err(err) => {
-                error!("Failed to send messages: {}", err.0);
-            }
-        }
-    }
-
     if conf.frames_per_run > 0 && frame.is_multiple_of(conf.frames_per_run) {
+        let current_job_id = Uuid::new_v4().to_string();
+
         info!(
             "Starting new run after {} simulated frames",
             conf.frames_per_run
         );
-        match producer.send(
-            BaseRecord::to(conf.run_info_topic)
-                .key("")
-                .payload(generate_run_stop(fbb, current_job_id))
-                .timestamp(now_nanos / 1_000_000),
-        ) {
-            Ok(_) => {}
-            Err(err) => {
-                error!("Failed to send run stop: {}", err.0);
-            }
+
+        if frame != 0 {
+            send_run_stop(producer, fbb, conf, &current_job_id, now_nanos);
         }
-        *current_job_id = Uuid::new_v4().to_string();
-        match producer.send(
-            BaseRecord::to(conf.run_info_topic)
-                .key("")
-                .payload(generate_run_start(
-                    fbb,
-                    conf.event_message_config.det_max,
-                    conf.event_topic,
-                    current_job_id,
-                ))
-                .timestamp(now_nanos / 1_000_000),
-        ) {
-            Ok(_) => {}
-            Err(err) => {
-                error!("Failed to send run start: {}", err.0);
-            }
-        }
+
+        send_run_start(producer, fbb, conf, &current_job_id, now_nanos);
+        send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
     }
+
+    send_run_metadata(producer, fbb, conf, vetoes_mask, now_nanos);
+    send_run_data(producer, fbb, conf, rng, frame, now_nanos);
 }
 
 pub struct EventMessageConfig {
@@ -357,8 +309,56 @@ fn calculate_data_rate(
     println!("Each ev44 is {ev44_size} bytes");
 }
 
+fn send_run_metadata(
+    producer: &ThreadedProducer<DefaultProducerContext>,
+    fbb: &mut FlatBufferBuilder<'_>,
+    conf: &HowlConfig,
+    vetoes_mask: &u32,
+    now_nanos: i64,
+) {
+    match producer.send(
+        BaseRecord::to(conf.event_topic)
+            .key("")
+            .payload(generate_fake_metadata(vetoes_mask, fbb, now_nanos))
+            .timestamp(now_nanos / 1_000_000),
+    ) {
+        Ok(_) => {}
+        Err(err) => {
+            error!("Failed to send messages: {}", err.0);
+        }
+    }
+}
+
+fn send_run_data(
+    producer: &ThreadedProducer<DefaultProducerContext>,
+    fbb: &mut FlatBufferBuilder<'_>,
+    conf: &HowlConfig,
+    rng: &mut ThreadRng,
+    frame: u32,
+    now_nanos: i64,
+) {
+    let ev44 = generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos).to_vec();
+
+    for _ in 0..conf.messages_per_frame {
+        match producer.send(
+            BaseRecord::to(conf.event_topic)
+                .key("")
+                .payload(if conf.fast {
+                    ev44.as_slice()
+                } else {
+                    generate_fake_events(fbb, rng, frame, conf.event_message_config, now_nanos)
+                })
+                .timestamp(now_nanos / 1_000_000),
+        ) {
+            Ok(_) => {}
+            Err(err) => {
+                error!("Failed to send messages: {}", err.0);
+            }
+        }
+    }
+}
 fn send_run_start(
-    producer: &mut ThreadedProducer<DefaultProducerContext>,
+    producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder<'_>,
     conf: &HowlConfig,
     current_job_id: &str,
@@ -379,8 +379,28 @@ fn send_run_start(
         .expect("Failed to enqueue run start message");
 }
 
+fn send_run_stop(
+    producer: &ThreadedProducer<DefaultProducerContext>,
+    fbb: &mut FlatBufferBuilder<'_>,
+    conf: &HowlConfig,
+    current_job_id: &str,
+    now_nanos: i64,
+) {
+    match producer.send(
+        BaseRecord::to(conf.run_info_topic)
+            .key("")
+            .payload(generate_run_stop(fbb, current_job_id))
+            .timestamp(now_nanos / 1_000_000),
+    ) {
+        Ok(_) => {}
+        Err(err) => {
+            error!("Failed to send run stop: {}", err.0);
+        }
+    }
+}
+
 fn send_veto_config(
-    producer: &mut ThreadedProducer<DefaultProducerContext>,
+    producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder<'_>,
     conf: &HowlConfig,
     vetoes_mask: &u32,
@@ -406,8 +426,8 @@ fn howl_begin(
     fbb: &mut FlatBufferBuilder<'_>,
     rng: &mut ThreadRng,
     conf: &HowlConfig,
-    current_job_id: &mut String,
-    vetoes_mask: &u32,
+    active_vetoes: &u32,
+    enabled_vetoes: &u32,
 ) {
     let target_frame_time = Duration::from_secs_f64(1.0 / conf.frames_per_second as f64);
     debug!("Target frame time: {target_frame_time:?}");
@@ -423,15 +443,14 @@ fn howl_begin(
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
         frames += 1;
-        debug!("current job id: {current_job_id}");
         produce_messages(
             producer,
             fbb,
             rng,
             frames,
             conf,
-            current_job_id,
-            vetoes_mask,
+            active_vetoes,
+            enabled_vetoes,
         );
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -493,16 +512,12 @@ pub fn howl(conf: &HowlConfig) {
     let mut producer: ThreadedProducer<DefaultProducerContext> =
         client_config.create().expect("Producer creation error");
 
-    let mut current_job_id = Uuid::new_v4().to_string();
-
-    send_run_start(&mut producer, &mut fbb, conf, &current_job_id, now_nanos);
-    send_veto_config(&mut producer, &mut fbb, conf, &enabled_vetoes, now_nanos);
     howl_begin(
         &mut producer,
         &mut fbb,
         &mut rng,
         conf,
-        &mut current_job_id,
         &active_vetoes,
+        &enabled_vetoes,
     );
 }

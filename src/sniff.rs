@@ -1,5 +1,5 @@
 use crate::KafkaOption;
-use crate::cli_utils::{set_kafka_options, BrokerAndOptionalTopic};
+use crate::cli_utils::{BrokerAndOptionalTopic, set_kafka_options};
 use rdkafka::ClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer};
 use std::time::Duration;

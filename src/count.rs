@@ -1,5 +1,5 @@
 use crate::KafkaOption;
-use crate::cli_utils::{set_kafka_options, BrokerAndTopic};
+use crate::cli_utils::{BrokerAndTopic, set_kafka_options};
 use futures::stream::StreamExt;
 use log::error;
 use rdkafka::consumer::{Consumer, DefaultConsumerContext, StreamConsumer};
