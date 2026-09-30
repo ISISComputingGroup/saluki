@@ -182,6 +182,7 @@ fn produce_messages(
         .expect("This will fail after April 11th, 2262");
 
     if frame == 0 && conf.frames_per_run == 0 {
+        info!("Starting new continuous run");
         send_run_start(producer, fbb, conf, current_job_id, now_nanos);
         send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
     }
