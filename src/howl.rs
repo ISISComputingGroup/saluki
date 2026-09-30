@@ -181,11 +181,16 @@ fn produce_messages(
         .try_into()
         .expect("This will fail after April 11th, 2262");
 
-    if conf.frames_per_run > 0 && frame.is_multiple_of(conf.frames_per_run) {
+    if frame == 0 && conf.frames_per_run == 0 {
+        send_run_start(producer, fbb, conf, current_job_id, now_nanos);
+        send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
+    }
+
+    else if frame.is_multiple_of(conf.frames_per_run) {
         info!(
-            "Starting new run after {} simulated frames",
-            conf.frames_per_run
-        );
+        "Starting new run after {} simulated frames",
+        conf.frames_per_run
+    );
 
         if frame != 0 {
             send_run_stop(producer, fbb, conf, current_job_id, now_nanos);
