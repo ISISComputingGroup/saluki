@@ -1,5 +1,6 @@
 use crate::KafkaOption;
 use std::fs::File;
+use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -43,10 +44,15 @@ fn generate_run_start<'a>(
         .as_ref()
         .map(|path| {
             let file = File::open(path).unwrap_or_else(|err| {
-                panic!("file containing nexus structure not found at {path}: {err}")
+                panic!(
+                    "file containing nexus structure not found at {}: {err}",
+                    path.display()
+                );
             });
-            let json_structure: serde_json::Value = serde_json::from_reader(file)
-                .unwrap_or_else(|err| panic!("file at {path} was not valid JSON: {err}"));
+            let json_structure: serde_json::Value =
+                serde_json::from_reader(file).unwrap_or_else(|err| {
+                    panic!("file at {} was not valid JSON: {err}", path.display())
+                });
             fbb.create_string(&json_structure.to_string())
         })
         .unwrap_or_else(|| fbb.create_string("{}"));
@@ -261,7 +267,7 @@ pub struct HowlConfig<'a> {
     pub event_message_config: &'a EventMessageConfig,
     pub fast: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
-    pub nexus_structure_path: Option<String>,
+    pub nexus_structure_path: Option<PathBuf>,
 }
 
 pub fn howl(conf: &HowlConfig) {
