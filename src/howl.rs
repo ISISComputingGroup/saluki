@@ -38,14 +38,18 @@ fn generate_run_start<'a>(
         n_spectra: det_max,
     };
 
-    let nexus_structure = config.nexus_structure_path.as_ref().map(|path| {
-        let file = File::open(path).unwrap_or_else(|err| {
-            panic!("file containing nexus structure not found at {path}: {err}")
-        });
-        let json_structure: serde_json::Value = serde_json::from_reader(file)
-            .unwrap_or_else(|err| panic!("file at {path} was not valid JSON: {err}"));
-        fbb.create_string(&json_structure.to_string())
-    });
+    let nexus_structure = config
+        .nexus_structure_path
+        .as_ref()
+        .map(|path| {
+            let file = File::open(path).unwrap_or_else(|err| {
+                panic!("file containing nexus structure not found at {path}: {err}")
+            });
+            let json_structure: serde_json::Value = serde_json::from_reader(file)
+                .unwrap_or_else(|err| panic!("file at {path} was not valid JSON: {err}"));
+            fbb.create_string(&json_structure.to_string())
+        })
+        .unwrap_or_else(|| fbb.create_string("{}"));
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
     let file_name = format!("{}.nxs", Uuid::new_v4());
@@ -61,7 +65,7 @@ fn generate_run_start<'a>(
         stop_time: 0, // TODO check this - it's optional so not necessarily 0
         run_name: Some(fbb.create_string(&run_name)),
         instrument_name: Some(fbb.create_string("saluki-howl")),
-        nexus_structure,
+        nexus_structure: Some(nexus_structure),
         job_id: Some(fbb.create_string(job_id)),
         broker: None,
         service_id: None,
