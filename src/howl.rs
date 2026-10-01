@@ -1,4 +1,6 @@
 use crate::KafkaOption;
+use std::fs::File;
+use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -27,7 +29,6 @@ use rand::prelude::ThreadRng;
 use rand_distr::{Distribution, Normal};
 use rdkafka::ClientConfig;
 use rdkafka::producer::{BaseRecord, DefaultProducerContext, ThreadedProducer};
-use serde_json::json;
 use uuid::Uuid;
 
 pub const VETO_COUNT: usize = 32;
@@ -35,8 +36,8 @@ pub const VETO_COUNT: usize = 32;
 fn generate_run_start<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
     det_max: i32,
-    event_topic: &str,
     job_id: &str,
+    config: &HowlConfig,
 ) -> &'a [u8] {
     fbb.reset();
     let args = SpectraDetectorMappingArgs {
@@ -45,35 +46,26 @@ fn generate_run_start<'a>(
         n_spectra: det_max,
     };
 
-    let nexus_structure = json!( {
-        "children": [
-            {
-                "type": "group",
-                "name": "raw_data_1",
-                "children": [
-                    {
-                        "type": "group",
-                        "name": "events",
-                        "children": [
-                            {
-                                "type": "stream",
-                                "stream": {
-                                    "topic": event_topic,
-                                    "source": "saluki_howl",
-                                    "writer_module": "ev44",
-                                },
-                            },
-                        ],
-                        "attributes": [{"name": "NX_class", "values": "NXentry"}],
-                    },
-                ],
-                "attributes": [{"name": "NX_class", "values": "NXentry"}],
-            }
-        ]
-    });
+    let nexus_structure = config
+        .nexus_structure_path
+        .as_ref()
+        .map(|path| {
+            let file = File::open(path).unwrap_or_else(|err| {
+                panic!(
+                    "file containing nexus structure not found at {}: {err}",
+                    path.display()
+                );
+            });
+            let json_structure: serde_json::Value =
+                serde_json::from_reader(file).unwrap_or_else(|err| {
+                    panic!("file at {} was not valid JSON: {err}", path.display())
+                });
+            fbb.create_string(&json_structure.to_string())
+        })
+        .unwrap_or_else(|| fbb.create_string("{}"));
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
-    let file_name = Uuid::new_v4().to_string();
+    let file_name = format!("{}.nxs", Uuid::new_v4());
     let run_name = format!("saluki-howl-{}", Uuid::new_v4());
 
     let start_time = SystemTime::now()
@@ -86,7 +78,7 @@ fn generate_run_start<'a>(
         stop_time: 0, // TODO check this - it's optional so not necessarily 0
         run_name: Some(fbb.create_string(&run_name)),
         instrument_name: Some(fbb.create_string("saluki-howl")),
-        nexus_structure: Some(fbb.create_string(&nexus_structure.to_string())),
+        nexus_structure: Some(nexus_structure),
         job_id: Some(fbb.create_string(job_id)),
         broker: None,
         service_id: None,
@@ -265,6 +257,23 @@ fn generate_fake_metadata<'a>(
     fbb.finished_data()
 }
 
+pub struct HowlConfig<'a> {
+    pub broker: &'a str,
+    pub event_topic: &'a str,
+    pub run_info_topic: &'a str,
+    pub veto_config_topic: &'a str,
+    pub messages_per_frame: u32,
+    pub frames_per_second: u32,
+    pub frames_per_run: u32,
+    pub veto_probability: Vec<f64>,
+    pub enabled_vetoes: Vec<bool>,
+    pub veto_names: Vec<String>,
+    pub event_message_config: &'a EventMessageConfig,
+    pub fast: bool,
+    pub kafka_config: Option<Vec<KafkaOption>>,
+    pub nexus_structure_path: Option<PathBuf>,
+}
+
 fn generate_veto_config<'a>(
     veto_names: &[String],
     fbb: &'a mut FlatBufferBuilder<'_>,
@@ -300,6 +309,7 @@ fn calculate_data_rate(
     let pu00_size = generate_fake_metadata(vetoes_mask, fbb, timestamp_ns).len() as u32;
     debug!("pu00 size is {pu00_size} bytes");
 
+    // calculate overall rate (with both ev44 and pu00)
     let rate_bytes_per_sec = ev44_size * conf.messages_per_frame * conf.frames_per_second
         + pu00_size * conf.frames_per_second;
     debug!("bytes per second: {rate_bytes_per_sec}");
@@ -376,8 +386,8 @@ fn send_run_start(
                 .payload(generate_run_start(
                     fbb,
                     conf.event_message_config.det_max,
-                    conf.event_topic,
                     current_job_id,
+                    conf,
                 ))
                 .timestamp(now_nanos / 1_000_000),
         )
@@ -478,22 +488,6 @@ fn howl_begin(
             )
         }
     }
-}
-
-pub struct HowlConfig<'a> {
-    pub broker: &'a str,
-    pub event_topic: &'a str,
-    pub run_info_topic: &'a str,
-    pub veto_config_topic: &'a str,
-    pub messages_per_frame: u32,
-    pub frames_per_second: u32,
-    pub frames_per_run: u32,
-    pub veto_probability: Vec<f64>,
-    pub enabled_vetoes: Vec<bool>,
-    pub veto_names: Vec<String>,
-    pub event_message_config: &'a EventMessageConfig,
-    pub fast: bool,
-    pub kafka_config: Option<Vec<KafkaOption>>,
 }
 
 pub fn howl(conf: &HowlConfig) {
