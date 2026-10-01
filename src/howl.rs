@@ -90,33 +90,33 @@ fn generate_run_start<'a>(
 
 fn generate_default_nexus_structure(config: &HowlConfig) -> String {
     json!(
-        {
-        "children": [
             {
-                "type": "group",
-                "name": "raw_data_1",
-                "children": [
-                    {
-                        "type": "group",
-                        "name": "events",
-                        "children": [
-                            {
-                                "type": "stream",
-                                "stream": {
-                                    "topic": config.event_topic,
-                                    "source": "saluki_howl",
-                                    "writer_module": "ev44",
-                                },
-                            },
-                        ],
-                        "attributes": [{"name": "NX_class", "values": "NXentry"}],
-                    },
-                ],
-                "attributes": [{"name": "NX_class", "values": "NXentry"}],
+      "children": [
+        {
+          "type": "group",
+          "name": "raw_data_1",
+          "attributes": {
+            "NX_class": "NXentry"
+          },
+          "children": [
+            {
+              "type": "group",
+              "name": "detector_1_events",
+              "children": [
+                {
+                  "module": "NXevent_data",
+                  "config": {
+                    "topic": config.event_topic
+                  }
+                }
+              ]
             }
-        ]
+          ]
+        }
+      ]
     }
-    )
+
+        )
     .to_string()
 }
 
@@ -447,7 +447,7 @@ mod tests {
         let j: Value = serde_json::from_str(&out).unwrap();
 
         assert_eq!(
-            j["children"][0]["children"][0]["children"][0]["stream"]["topic"],
+            j["children"][0]["children"][0]["children"][0]["config"]["topic"],
             event_topic
         )
     }
