@@ -12,6 +12,7 @@ use crate::howl::{EventMessageConfig, HowlConfig, howl};
 use crate::sniff::sniff;
 use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -101,6 +102,9 @@ enum Commands {
         /// Enable howl fast mode (Disables randomised ev44 blob generation)
         #[arg(long, action=clap::ArgAction::SetTrue)]
         fast: bool,
+        /// Read a NeXus structure from the specified file.
+        #[arg(short = 's', long)]
+        nexus_structure_path: Option<PathBuf>,
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
@@ -168,6 +172,7 @@ async fn main() {
             det_max,
             veto_probability,
             fast,
+            nexus_structure_path,
             kafka_config,
         } => howl(&HowlConfig {
             kafka_config,
@@ -186,6 +191,7 @@ async fn main() {
             },
             veto_probability,
             fast,
+            nexus_structure_path,
         }),
         Commands::Count {
             topic,

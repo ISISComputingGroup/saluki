@@ -1,4 +1,6 @@
 use crate::KafkaOption;
+use std::fs::File;
+use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -22,14 +24,13 @@ use rand::prelude::ThreadRng;
 use rand_distr::{Distribution, Normal};
 use rdkafka::ClientConfig;
 use rdkafka::producer::{BaseRecord, DefaultProducerContext, ThreadedProducer};
-use serde_json::json;
 use uuid::Uuid;
 
 fn generate_run_start<'a>(
     fbb: &'a mut FlatBufferBuilder<'_>,
     det_max: i32,
-    event_topic: &str,
     job_id: &str,
+    config: &HowlConfig,
 ) -> &'a [u8] {
     fbb.reset();
     let args = SpectraDetectorMappingArgs {
@@ -38,35 +39,26 @@ fn generate_run_start<'a>(
         n_spectra: det_max,
     };
 
-    let nexus_structure = json!( {
-        "children": [
-            {
-                "type": "group",
-                "name": "raw_data_1",
-                "children": [
-                    {
-                        "type": "group",
-                        "name": "events",
-                        "children": [
-                            {
-                                "type": "stream",
-                                "stream": {
-                                    "topic": event_topic,
-                                    "source": "saluki_howl",
-                                    "writer_module": "ev44",
-                                },
-                            },
-                        ],
-                        "attributes": [{"name": "NX_class", "values": "NXentry"}],
-                    },
-                ],
-                "attributes": [{"name": "NX_class", "values": "NXentry"}],
-            }
-        ]
-    });
+    let nexus_structure = config
+        .nexus_structure_path
+        .as_ref()
+        .map(|path| {
+            let file = File::open(path).unwrap_or_else(|err| {
+                panic!(
+                    "file containing nexus structure not found at {}: {err}",
+                    path.display()
+                );
+            });
+            let json_structure: serde_json::Value =
+                serde_json::from_reader(file).unwrap_or_else(|err| {
+                    panic!("file at {} was not valid JSON: {err}", path.display())
+                });
+            fbb.create_string(&json_structure.to_string())
+        })
+        .unwrap_or_else(|| fbb.create_string("{}"));
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
-    let file_name = Uuid::new_v4().to_string();
+    let file_name = format!("{}.nxs", Uuid::new_v4());
     let run_name = format!("saluki-howl-{}", Uuid::new_v4());
 
     let start_time = SystemTime::now()
@@ -79,7 +71,7 @@ fn generate_run_start<'a>(
         stop_time: 0, // TODO check this - it's optional so not necessarily 0
         run_name: Some(fbb.create_string(&run_name)),
         instrument_name: Some(fbb.create_string("saluki-howl")),
-        nexus_structure: Some(fbb.create_string(&nexus_structure.to_string())),
+        nexus_structure: Some(nexus_structure),
         job_id: Some(fbb.create_string(job_id)),
         broker: None,
         service_id: None,
@@ -190,8 +182,8 @@ fn produce_messages(
                 .payload(generate_run_start(
                     fbb,
                     conf.event_message_config.det_max,
-                    conf.event_topic,
                     current_job_id,
+                    conf,
                 ))
                 .timestamp(now_nanos / 1_000_000),
         ) {
@@ -275,6 +267,7 @@ pub struct HowlConfig<'a> {
     pub event_message_config: &'a EventMessageConfig,
     pub fast: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
+    pub nexus_structure_path: Option<PathBuf>,
 }
 
 pub fn howl(conf: &HowlConfig) {
@@ -337,8 +330,8 @@ pub fn howl(conf: &HowlConfig) {
                 .payload(generate_run_start(
                     &mut fbb,
                     conf.event_message_config.det_max,
-                    conf.event_topic,
                     &current_job_id,
+                    conf,
                 ))
                 .timestamp(now_nanos / 1_000_000),
         )
