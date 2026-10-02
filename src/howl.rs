@@ -29,6 +29,7 @@ use rand::prelude::ThreadRng;
 use rand_distr::{Distribution, Normal};
 use rdkafka::ClientConfig;
 use rdkafka::producer::{BaseRecord, DefaultProducerContext, ThreadedProducer};
+use serde_json::json;
 use uuid::Uuid;
 
 pub const VETO_COUNT: usize = 32;
@@ -62,7 +63,7 @@ fn generate_run_start<'a>(
                 });
             fbb.create_string(&json_structure.to_string())
         })
-        .unwrap_or_else(|| fbb.create_string("{}"));
+        .unwrap_or_else(|| fbb.create_string(generate_default_nexus_structure(config).as_str()));
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
     let file_name = format!("{}.nxs", Uuid::new_v4());
@@ -92,6 +93,38 @@ fn generate_run_start<'a>(
 
     finish_run_start_buffer(fbb, run_start_buf);
     fbb.finished_data()
+}
+
+fn generate_default_nexus_structure(config: &HowlConfig) -> String {
+    json!(
+            {
+      "children": [
+        {
+          "type": "group",
+          "name": "raw_data_1",
+          "attributes": {
+            "NX_class": "NXentry"
+          },
+          "children": [
+            {
+              "type": "group",
+              "name": "detector_1_events",
+              "children": [
+                {
+                  "module": "NXevent_data",
+                  "config": {
+                    "topic": config.event_topic
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+        )
+    .to_string()
 }
 
 fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'a [u8] {
@@ -522,4 +555,44 @@ pub fn howl(conf: &HowlConfig) {
         &active_vetoes,
         &enabled_vetoes,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    #[test]
+    fn test_generate_default_nexus_structure_substitutes_topic_correctly() {
+        let event_topic = "myevents";
+        let conf = HowlConfig {
+            broker: "blah",
+            event_topic,
+            run_info_topic: "blah",
+            messages_per_frame: 1,
+            frames_per_second: 1,
+            frames_per_run: 1,
+            veto_probability: 0.5,
+            event_message_config: &EventMessageConfig {
+                events_per_message: 0,
+                tof_peak: 0.0,
+                tof_sigma: 0.0,
+                det_min: 0,
+                det_max: 0,
+            },
+
+            fast: false,
+            kafka_config: None,
+            nexus_structure_path: None,
+        };
+
+        let out = generate_default_nexus_structure(&conf);
+
+        let j: Value = serde_json::from_str(&out).unwrap();
+
+        assert_eq!(
+            j["children"][0]["children"][0]["children"][0]["config"]["topic"],
+            event_topic
+        )
+    }
 }
