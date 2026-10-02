@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use rdkafka::ClientConfig;
 use std::str::FromStr;
 
 pub(crate) fn parse_broker_spec(s: &str) -> Result<BrokerAndTopic> {
@@ -66,6 +67,21 @@ impl BrokerAndOptionalTopic {
 pub struct KafkaOption {
     pub key: String,
     pub value: String,
+}
+
+pub fn set_kafka_options(
+    client_config: &mut ClientConfig,
+    kafka_config: &Option<Vec<KafkaOption>>,
+) {
+    if let Some(kafka_options) = kafka_config {
+        for option in kafka_options {
+            println!(
+                "Setting Kafka config option {}={}",
+                option.key, option.value
+            );
+            client_config.set(&option.key, &option.value);
+        }
+    }
 }
 
 impl FromStr for KafkaOption {
