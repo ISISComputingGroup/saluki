@@ -28,7 +28,7 @@ use rand::RngExt;
 use rand::prelude::ThreadRng;
 use rand_distr::{Distribution, Normal};
 use rdkafka::ClientConfig;
-use rdkafka::producer::{BaseRecord, DefaultProducerContext, ThreadedProducer};
+use rdkafka::producer::{BaseRecord, DefaultProducerContext, Producer, ThreadedProducer};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -210,7 +210,9 @@ fn produce_messages(
         info!("Starting new continuous run");
         send_run_start(producer, fbb, conf, current_job_id, now_nanos);
         send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
-        producer.flush(Duration::from_secs(1));
+        producer
+            .flush(Duration::from_secs(1))
+            .expect("Could not flush producer after continuous run start.");
     } else if frame.is_multiple_of(conf.frames_per_run) {
         info!(
             "Starting new run after {} simulated frames",
@@ -493,7 +495,6 @@ fn howl_begin(
     loop {
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
-        frames += 1;
         produce_messages(
             producer,
             fbb,
@@ -504,6 +505,7 @@ fn howl_begin(
             enabled_vetoes,
             &mut current_job_id,
         );
+        frames += 1;
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("Failed to get system time");
