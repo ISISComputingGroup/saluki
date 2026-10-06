@@ -210,6 +210,7 @@ fn produce_messages(
         info!("Starting new continuous run");
         send_run_start(producer, fbb, conf, current_job_id, now_nanos);
         send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
+        producer.flush(Duration::from_secs(1));
     } else if frame.is_multiple_of(conf.frames_per_run) {
         info!(
             "Starting new run after {} simulated frames",
