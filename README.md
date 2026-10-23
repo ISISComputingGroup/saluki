@@ -72,6 +72,19 @@ An example of using this could be:
 
 `saluki count mybroker:9092/mytopic --message-interval 3` - this listens to the `mytopic` topic and prints the data rate between 3 second intervals. 
 
+
+## `howl` - Enables local testing of Saluki commands
+
+`howl` is used to replicate a machine producing data, allowing for testing of the other functions.
+
+To use `howl`:
+
+- Open up an additional cmd window.
+- CD into the /saluki directory.
+- run `saluki run -- howl mybroker:9092 topic_prefix` i.e. `saluki run -- howl 127.0.0.1:9092 HRPD-X`
+- The existing cmd window should now recieve test data from the `howl` function.
+
+
 # Developer setup
 
 some system dependencies are required. On Windows these are built-in, but on a debian-based linux distro you will need `libcurl4-openssl-dev`
