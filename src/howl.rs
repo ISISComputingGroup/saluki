@@ -140,6 +140,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
         job_id: Some(fbb.create_string(job_id)),
         service_id: None,
         command_id: Some(fbb.create_string("")),
+        abort: false,
     };
     let run_stop_buf = RunStop::create(fbb, &run_stop_args);
     finish_run_stop_buffer(fbb, run_stop_buf);
