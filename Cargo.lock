@@ -441,9 +441,9 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "isis_streaming_data_types"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7189171301072e5e8c6541db5f7f086a45045a20c190cf946a208f8cc4b8f142"
+checksum = "3911a542e28783a545c8a0863e96ee28bb8f5a8ec69f4c9e4d9b0050e1dfefdb"
 dependencies = [
  "flatbuffers",
 ]
