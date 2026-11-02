@@ -25,4 +25,4 @@ rdkafka = { version="0.39.0", features = ["cmake_build"] }
 rdkafka = { version="0.39.0", features = ["cmake_build", "curl", "ssl-vendored"] }
 
 [dev-dependencies]
-rstest = "0.26.1"
+rstest = "0.28.0"
