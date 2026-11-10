@@ -416,6 +416,7 @@ fn send_run_start(
     current_job_id: &str,
     now_nanos: i64,
 ) {
+    let time = now_nanos / 1_000_000;
     producer
         .send(
             BaseRecord::to(conf.run_info_topic)
@@ -426,9 +427,10 @@ fn send_run_start(
                     current_job_id,
                     conf,
                 ))
-                .timestamp(now_nanos / 1_000_000),
+                .timestamp(time),
         )
         .expect("Failed to enqueue run start message");
+    info!("Sent run start with timestamp of {time}");
 }
 
 fn send_run_stop(
@@ -438,13 +440,16 @@ fn send_run_stop(
     current_job_id: &str,
     now_nanos: i64,
 ) {
+    let time = now_nanos / 1_000_000;
     match producer.send(
         BaseRecord::to(conf.run_info_topic)
             .key("")
             .payload(generate_run_stop(fbb, current_job_id))
-            .timestamp(now_nanos / 1_000_000),
+            .timestamp(time),
     ) {
-        Ok(_) => {}
+        Ok(_) => {
+            info!("Sent run stop with timestamp of {time}");
+        }
         Err(err) => {
             error!("Failed to send run stop: {}", err.0);
         }
