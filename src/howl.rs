@@ -198,7 +198,7 @@ fn produce_run_messages(
     conf: &HowlConfig,
     active_vetoes: &u32,
     enabled_vetoes: &u32,
-    current_job_id: &mut String,
+    current_job_id: &mut str,
 ) {
     if frame == 0 && conf.frames_per_run == 0 {
         info!("Starting new continuous run");
