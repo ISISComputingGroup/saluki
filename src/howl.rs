@@ -189,7 +189,8 @@ fn get_active_vetoes(conf: &HowlConfig) -> u32 {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn produce_messages(
+fn produce_run_messages(
+    timestamp_ns: i64,
     producer: &ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder,
     rng: &mut ThreadRng,
@@ -199,18 +200,10 @@ fn produce_messages(
     enabled_vetoes: &u32,
     current_job_id: &mut String,
 ) {
-    // get current time
-    let now_nanos = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("Failed to get system time")
-        .as_nanos()
-        .try_into()
-        .expect("This will fail after April 11th, 2262");
-
     if frame == 0 && conf.frames_per_run == 0 {
         info!("Starting new continuous run");
-        send_run_start(producer, fbb, conf, current_job_id, now_nanos);
-        send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
+        send_run_start(producer, fbb, conf, current_job_id, timestamp_ns);
+        send_veto_config(producer, fbb, conf, enabled_vetoes, timestamp_ns);
         producer
             .flush(Duration::from_secs(1))
             .expect("Could not flush producer after continuous run start.");
@@ -219,18 +212,12 @@ fn produce_messages(
             "Starting new run after {} simulated frames",
             conf.frames_per_run
         );
-
-        if frame != 0 {
-            send_run_stop(producer, fbb, conf, current_job_id, now_nanos);
-            *current_job_id = Uuid::new_v4().to_string();
-        }
-
-        send_run_start(producer, fbb, conf, current_job_id, now_nanos);
-        send_veto_config(producer, fbb, conf, enabled_vetoes, now_nanos);
+        send_run_start(producer, fbb, conf, current_job_id, timestamp_ns);
+        send_veto_config(producer, fbb, conf, enabled_vetoes, timestamp_ns);
     }
 
-    send_frame_metadata(producer, fbb, conf, active_vetoes, now_nanos);
-    send_frame_data(producer, fbb, conf, rng, frame, now_nanos);
+    send_frame_metadata(producer, fbb, conf, active_vetoes, timestamp_ns);
+    send_frame_data(producer, fbb, conf, rng, frame, timestamp_ns);
 }
 
 pub struct EventMessageConfig {
@@ -309,6 +296,7 @@ pub struct HowlConfig<'a> {
     pub fast: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
     pub nexus_structure_path: Option<PathBuf>,
+    pub sleep_between_runs_s: f32,
 }
 
 fn generate_veto_config<'a>(
@@ -478,6 +466,15 @@ fn send_veto_config(
         .expect("Failed to enqueue run veto configuration message");
 }
 
+fn current_time_ns() -> i64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Failed to get system time")
+        .as_nanos()
+        .try_into()
+        .expect("This will fail after April 11th, 2262")
+}
+
 fn howl_begin(
     producer: &mut ThreadedProducer<DefaultProducerContext>,
     fbb: &mut FlatBufferBuilder<'_>,
@@ -501,7 +498,25 @@ fn howl_begin(
     loop {
         target_time += target_frame_time;
         debug!("New target: {target_time:?}");
-        produce_messages(
+        // get current time
+        let mut now_nanos = current_time_ns();
+
+        if frames != 0 && frames.is_multiple_of(conf.frames_per_run) {
+            send_run_stop(producer, fbb, conf, &current_job_id, now_nanos);
+            current_job_id = Uuid::new_v4().to_string();
+            if conf.sleep_between_runs_s > 0.0 {
+                producer
+                    .flush(Duration::from_secs(1))
+                    .expect("flush before sleep");
+                let d = Duration::from_secs_f32(conf.sleep_between_runs_s);
+                info!("Sleeping for {d:?} between runs");
+                std::thread::sleep(d);
+                target_time += d;
+                now_nanos = current_time_ns();
+            }
+        }
+        produce_run_messages(
+            now_nanos,
             producer,
             fbb,
             rng,
@@ -596,6 +611,7 @@ mod tests {
             fast: false,
             kafka_config: None,
             nexus_structure_path: None,
+            sleep_between_runs_s: 0.0,
         };
 
         let out = generate_default_nexus_structure(&conf);
