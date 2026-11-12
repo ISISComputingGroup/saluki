@@ -114,6 +114,9 @@ enum Commands {
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
+        // How long to sleep between run starts and stops
+        #[arg(short = 'S', long, default_value = "0.0")]
+        sleep_between_runs_s: f32,
     },
     /// Count topic data rates
     Count {
@@ -182,6 +185,7 @@ async fn main() {
             fast,
             nexus_structure_path,
             kafka_config,
+            sleep_between_runs_s,
         } => howl(&HowlConfig {
             kafka_config,
             broker: &broker,
@@ -203,6 +207,7 @@ async fn main() {
             veto_names,
             fast,
             nexus_structure_path,
+            sleep_between_runs_s,
         }),
         Commands::Count {
             topic,
