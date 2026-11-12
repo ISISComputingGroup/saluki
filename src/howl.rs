@@ -127,7 +127,11 @@ fn generate_default_nexus_structure(config: &HowlConfig) -> String {
     .to_string()
 }
 
-fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'a [u8] {
+fn generate_run_stop<'a>(
+    fbb: &'a mut FlatBufferBuilder<'_>,
+    job_id: &str,
+    abort_runs: bool,
+) -> &'a [u8] {
     fbb.reset();
     let stop_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -140,7 +144,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
         job_id: Some(fbb.create_string(job_id)),
         service_id: None,
         command_id: Some(fbb.create_string("")),
-        abort: false,
+        abort: abort_runs,
     };
     let run_stop_buf = RunStop::create(fbb, &run_stop_args);
     finish_run_stop_buffer(fbb, run_stop_buf);
@@ -307,6 +311,7 @@ pub struct HowlConfig<'a> {
     pub veto_names: Vec<String>,
     pub event_message_config: &'a EventMessageConfig,
     pub fast: bool,
+    pub abort_runs: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
     pub nexus_structure_path: Option<PathBuf>,
 }
@@ -444,7 +449,7 @@ fn send_run_stop(
     match producer.send(
         BaseRecord::to(conf.run_info_topic)
             .key("")
-            .payload(generate_run_stop(fbb, current_job_id))
+            .payload(generate_run_stop(fbb, current_job_id, conf.abort_runs))
             .timestamp(time),
     ) {
         Ok(_) => {
@@ -594,6 +599,7 @@ mod tests {
             },
 
             fast: false,
+            abort_runs: false,
             kafka_config: None,
             nexus_structure_path: None,
         };
