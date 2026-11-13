@@ -67,7 +67,7 @@ fn generate_run_start<'a>(
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
     let file_name = format!("{}.nxs", Uuid::new_v4());
-    let run_name = format!("saluki-howl-{}", Uuid::new_v4());
+    let run_name = format!("{}-{}", config.instrument, Uuid::new_v4());
 
     let start_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -78,7 +78,7 @@ fn generate_run_start<'a>(
         start_time: start_time as u64,
         stop_time: 0, // TODO check this - it's optional so not necessarily 0
         run_name: Some(fbb.create_string(&run_name)),
-        instrument_name: Some(fbb.create_string("saluki-howl")),
+        instrument_name: Some(fbb.create_string(&config.instrument)),
         nexus_structure: Some(nexus_structure),
         job_id: Some(fbb.create_string(job_id)),
         broker: None,
@@ -314,6 +314,7 @@ pub struct HowlConfig<'a> {
     pub abort_runs: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
     pub nexus_structure_path: Option<PathBuf>,
+    pub instrument: String,
 }
 
 fn generate_veto_config<'a>(
@@ -602,6 +603,7 @@ mod tests {
             abort_runs: false,
             kafka_config: None,
             nexus_structure_path: None,
+            instrument: "blah".to_string(),
         };
 
         let out = generate_default_nexus_structure(&conf);
