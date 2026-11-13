@@ -555,6 +555,8 @@ pub fn howl(conf: &HowlConfig) {
 
     let mut client_config: ClientConfig = ClientConfig::new();
     client_config.set("bootstrap.servers", conf.broker);
+    client_config.set("enable.idempotence", "true");
+    client_config.set("max.in.flight.requests.per.connection", "1");
     set_kafka_options(&mut client_config, &conf.kafka_config);
 
     // create producer
