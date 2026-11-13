@@ -114,6 +114,9 @@ enum Commands {
         /// Read a NeXus structure from the specified file.
         #[arg(short = 's', long)]
         nexus_structure_path: Option<PathBuf>,
+        /// Optionally specify the instrument name for run starts
+        #[arg(short = 'i', long)]
+        instrument: Option<String>,
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
@@ -185,6 +188,7 @@ async fn main() {
             fast,
             abort_runs,
             nexus_structure_path,
+            instrument,
             kafka_config,
         } => howl(&HowlConfig {
             kafka_config,
@@ -208,6 +212,7 @@ async fn main() {
             fast,
             abort_runs,
             nexus_structure_path,
+            instrument: instrument.unwrap_or(topic_prefix),
         }),
         Commands::Count {
             topic,
