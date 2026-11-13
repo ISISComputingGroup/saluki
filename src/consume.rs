@@ -117,7 +117,7 @@ pub fn consume(config: &ConsumeConfig) {
                         if config.key {
                             print!(" key={:?}", message.key().unwrap_or(b""));
                         }
-                        print!("] ");
+                        print!(" offset={}] ", message.offset());
                         match deserialize_message(p) {
                             Ok(d) => {
                                 if config.terse {
