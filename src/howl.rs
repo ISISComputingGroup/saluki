@@ -225,7 +225,7 @@ fn produce_run_messages(
 }
 
 pub struct EventMessageConfig {
-    pub events_per_message: i32,
+    pub events_per_message: u32,
     pub tof_peak: f32,
     pub tof_sigma: f32,
     pub det_min: i32,
@@ -301,7 +301,7 @@ pub struct HowlConfig<'a> {
     pub abort_runs: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
     pub nexus_structure_path: Option<PathBuf>,
-    pub sleep_between_runs_s: f32,
+    pub sleep_between_runs_s: Option<f32>,
     pub instrument: String,
 }
 
@@ -510,11 +510,11 @@ fn howl_begin(
         if frames != 0 && frames.is_multiple_of(conf.frames_per_run) {
             send_run_stop(producer, fbb, conf, &current_job_id, now_nanos);
             current_job_id = Uuid::new_v4().to_string();
-            if conf.sleep_between_runs_s > 0.0 {
+            if let Some(s) = conf.sleep_between_runs_s {
                 producer
                     .flush(Duration::from_secs(1))
                     .expect("flush before sleep");
-                let d = Duration::from_secs_f32(conf.sleep_between_runs_s);
+                let d = Duration::from_secs_f32(s);
                 info!("Sleeping for {d:?} between runs");
                 std::thread::sleep(d);
                 target_time += d;
@@ -620,7 +620,7 @@ mod tests {
             abort_runs: false,
             kafka_config: None,
             nexus_structure_path: None,
-            sleep_between_runs_s: 0.0,
+            sleep_between_runs_s: None,
             instrument: "blah".to_string(),
         };
 
