@@ -67,7 +67,7 @@ fn generate_run_start<'a>(
 
     let det_spec_map_buf = SpectraDetectorMapping::create(fbb, &args);
     let file_name = format!("{}.nxs", Uuid::new_v4());
-    let run_name = format!("saluki-howl-{}", Uuid::new_v4());
+    let run_name = format!("{}-{}", config.instrument, Uuid::new_v4());
 
     let start_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -78,7 +78,7 @@ fn generate_run_start<'a>(
         start_time: start_time as u64,
         stop_time: 0, // TODO check this - it's optional so not necessarily 0
         run_name: Some(fbb.create_string(&run_name)),
-        instrument_name: Some(fbb.create_string("saluki-howl")),
+        instrument_name: Some(fbb.create_string(&config.instrument)),
         nexus_structure: Some(nexus_structure),
         job_id: Some(fbb.create_string(job_id)),
         broker: None,
@@ -127,7 +127,11 @@ fn generate_default_nexus_structure(config: &HowlConfig) -> String {
     .to_string()
 }
 
-fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'a [u8] {
+fn generate_run_stop<'a>(
+    fbb: &'a mut FlatBufferBuilder<'_>,
+    job_id: &str,
+    abort_runs: bool,
+) -> &'a [u8] {
     fbb.reset();
     let stop_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -140,7 +144,7 @@ fn generate_run_stop<'a>(fbb: &'a mut FlatBufferBuilder<'_>, job_id: &str) -> &'
         job_id: Some(fbb.create_string(job_id)),
         service_id: None,
         command_id: Some(fbb.create_string("")),
-        abort: false,
+        abort: abort_runs,
     };
     let run_stop_buf = RunStop::create(fbb, &run_stop_args);
     finish_run_stop_buffer(fbb, run_stop_buf);
@@ -294,9 +298,11 @@ pub struct HowlConfig<'a> {
     pub veto_names: Vec<String>,
     pub event_message_config: &'a EventMessageConfig,
     pub fast: bool,
+    pub abort_runs: bool,
     pub kafka_config: Option<Vec<KafkaOption>>,
     pub nexus_structure_path: Option<PathBuf>,
     pub sleep_between_runs_s: f32,
+    pub instrument: String,
 }
 
 fn generate_veto_config<'a>(
@@ -432,7 +438,7 @@ fn send_run_stop(
     match producer.send(
         BaseRecord::to(conf.run_info_topic)
             .key("")
-            .payload(generate_run_stop(fbb, current_job_id))
+            .payload(generate_run_stop(fbb, current_job_id, conf.abort_runs))
             .timestamp(time),
     ) {
         Ok(_) => {
@@ -565,6 +571,8 @@ pub fn howl(conf: &HowlConfig) {
 
     let mut client_config: ClientConfig = ClientConfig::new();
     client_config.set("bootstrap.servers", conf.broker);
+    client_config.set("enable.idempotence", "true");
+    client_config.set("max.in.flight.requests.per.connection", "1");
     set_kafka_options(&mut client_config, &conf.kafka_config);
 
     // create producer
@@ -609,9 +617,11 @@ mod tests {
             },
 
             fast: false,
+            abort_runs: false,
             kafka_config: None,
             nexus_structure_path: None,
             sleep_between_runs_s: 0.0,
+            instrument: "blah".to_string(),
         };
 
         let out = generate_default_nexus_structure(&conf);

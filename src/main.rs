@@ -108,9 +108,15 @@ enum Commands {
         /// Enable howl fast mode (Disables randomised ev44 blob generation)
         #[arg(long, action=clap::ArgAction::SetTrue)]
         fast: bool,
+        /// Whether to abort runs when sending run stops
+        #[arg(long, action=clap::ArgAction::SetTrue)]
+        abort_runs: bool,
         /// Read a NeXus structure from the specified file.
         #[arg(short = 's', long)]
         nexus_structure_path: Option<PathBuf>,
+        /// Optionally specify the instrument name for run starts
+        #[arg(short = 'i', long)]
+        instrument: Option<String>,
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
@@ -183,7 +189,9 @@ async fn main() {
             enabled_vetoes,
             veto_names,
             fast,
+            abort_runs,
             nexus_structure_path,
+            instrument,
             kafka_config,
             sleep_between_runs_s,
         } => howl(&HowlConfig {
@@ -206,8 +214,10 @@ async fn main() {
             enabled_vetoes,
             veto_names,
             fast,
+            abort_runs,
             nexus_structure_path,
             sleep_between_runs_s,
+            instrument: instrument.unwrap_or(topic_prefix),
         }),
         Commands::Count {
             topic,
@@ -215,6 +225,6 @@ async fn main() {
             kafka_config,
         } => {
             count(topic, message_interval, kafka_config).await;
-        } // Commands::Play {} => {}
+        }
     }
 }
