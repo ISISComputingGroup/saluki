@@ -50,20 +50,6 @@ INFO:saluki:    MERLIN_monitorHistograms:
 INFO:saluki:            0 - low:7515, high:7551, num_messages:36
 ```
 
-## `play` - Replay data from one topic to another
-
-> [!IMPORTANT]
-> This functionality was not ported over when `saluki` was rewritten in rust. [this issue](https://github.com/ISISComputingGroup/saluki/issues/50) exists to do so. 
-
-### Between offsets
-
-`saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -o 123 125` - This will forward messages at offset 123, 124 and 125 in the `source_topic` to the `dest_topic`
-
-### Between timestamps 
-
-`saluki play mybroker:9092/source_topic mybroker:9092/dest_topic -t 1762209990 1762209992` - This will forward messages between the two given timestamps.
-
-
 ## `count` - Count topic data rates
 
 `count` is used for viewing the current data rate in a given topic. 
