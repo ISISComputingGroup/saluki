@@ -14,6 +14,15 @@ use clap::{Parser, Subcommand};
 use cli_utils::{BrokerAndTopic, parse_broker_spec, parse_broker_spec_optional_topic};
 use std::path::PathBuf;
 
+fn positive_f32(s: &str) -> Result<f32, String> {
+    let val = s.parse::<f32>().map_err(|e| format!("{}", e))?;
+    if val > 0.0 {
+        Ok(val)
+    } else {
+        Err(format!("{} is not above zero", s))
+    }
+}
+
 #[derive(Parser, Debug)]
 struct Cli {
     #[command(subcommand)]
@@ -74,7 +83,7 @@ enum Commands {
         topic_prefix: String,
         /// Events per ev44 to simulate
         #[arg(short, long, default_value = "100")]
-        events_per_message: i32,
+        events_per_message: u32,
         /// Number of ev44 per frame to simulate
         #[arg(short, long, default_value = "20")]
         messages_per_frame: u32,
@@ -120,6 +129,9 @@ enum Commands {
         // Additonal command line arguments
         #[arg(short = 'X', long)]
         kafka_config: Option<Vec<KafkaOption>>,
+        // How long to sleep between run starts and stops
+        #[arg(short = 'S', long, requires("frames_per_run"), value_parser = positive_f32)]
+        sleep_between_runs_s: Option<f32>,
     },
     /// Count topic data rates
     Count {
@@ -190,6 +202,7 @@ async fn main() {
             nexus_structure_path,
             instrument,
             kafka_config,
+            sleep_between_runs_s,
         } => howl(&HowlConfig {
             kafka_config,
             broker: &broker,
@@ -212,6 +225,7 @@ async fn main() {
             fast,
             abort_runs,
             nexus_structure_path,
+            sleep_between_runs_s,
             instrument: instrument.unwrap_or(topic_prefix),
         }),
         Commands::Count {
@@ -220,6 +234,6 @@ async fn main() {
             kafka_config,
         } => {
             count(topic, message_interval, kafka_config).await;
-        } // Commands::Play {} => {}
+        }
     }
 }
