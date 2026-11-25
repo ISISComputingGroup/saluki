@@ -88,6 +88,8 @@ fn generate_run_start<'a>(
         detector_spectrum_map: Some(det_spec_map_buf),
         metadata: None,
         control_topic: None,
+        gps_start_time: Some(start_time as u64 * 1_000_000),
+        gps_stop_time: None,
     };
     let run_start_buf = RunStart::create(fbb, &run_start_args);
 
@@ -145,6 +147,7 @@ fn generate_run_stop<'a>(
         service_id: None,
         command_id: Some(fbb.create_string("")),
         abort: abort_runs,
+        gps_stop_time: Some(stop_time as u64 * 1_000_000),
     };
     let run_stop_buf = RunStop::create(fbb, &run_stop_args);
     finish_run_stop_buffer(fbb, run_stop_buf);
